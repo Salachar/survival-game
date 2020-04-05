@@ -39,6 +39,10 @@ class Game {
 
 	createDebugWalls () {
 		let walls = [
+			[0, 0, window.innerWidth, 20],
+			[window.innerWidth - 20, 0, 20, window.innerHeight],
+			[0, window.innerHeight - 20, window.innerWidth, 20],
+			[0, 0, 20, window.innerHeight],
 			[50, 600, 400, 30],
 			[200, 100, 500, 50],
 			[800, 100, 20, 600],

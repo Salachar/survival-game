@@ -25,6 +25,8 @@ class Player extends GOB {
         this.half_width = this.width / 2;
         this.half_height = this.height / 2;
 
+        this.shooting_timer = null;
+
 		return this;
     }
 
@@ -114,13 +116,25 @@ class Player extends GOB {
         // console.log('press');
     }
 
-    mClick (mouse) {
+    mDown (mouse) {
+        this.fireWeapon();
+        this.shooting_timer = setInterval(() => {
+            this.fireWeapon();
+        }, 100);
+    }
+
+    mUp (mouse) {
+        clearInterval(this.shooting_timer);
+        this.shooting_timer = null;
+    }
+
+    fireWeapon (mouse) {
         new Projectile({
             layer: GOM.front,
             x: this.x,
             y: this.y,
-            aim_x: mouse.x,
-            aim_y: mouse.y,
+            aim_x: GIM.mouse.x,
+            aim_y: GIM.mouse.y,
         });
     }
 

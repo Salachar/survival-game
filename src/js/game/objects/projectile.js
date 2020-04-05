@@ -51,22 +51,31 @@ class Projectile extends GOB {
 
 	update () {
 		if (this.resolved) return;
-		this.collisions = GOM.checkCollisions(this);
+		this.collisions = GOM.checkCollisions({
+			obj: this,
+			closest_key: 't1',
+		});
+
 		this.resolved = true;
 		setTimeout(() => {
 			this.shutdown();
-		}, 100);
+		}, 10);
 	}
 
 	draw () {
-		this.context.save();
-			this.context.beginPath();
-			this.context.lineWidth = 1;
-			this.context.moveTo(this.x, this.y);
-			this.context.lineTo(this.aim_point.x, this.aim_point.y);
-			this.context.strokeStyle = "#FFFFFF";
-			this.context.stroke();
-		this.context.restore();
+		if (this.collisions && this.collisions.closest) {
+			this.context.save();
+				this.context.beginPath();
+				this.context.lineWidth = 1;
+				this.context.moveTo(this.x, this.y);
+				this.context.lineTo(
+					this.collisions.closest.x,
+					this.collisions.closest.y
+				);
+				this.context.strokeStyle = "#FFFFFF";
+				this.context.stroke();
+			this.context.restore();
+		}
 	}
 }
 

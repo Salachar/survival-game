@@ -350,16 +350,38 @@ class GOM {
 		this.back.clear();
 	}
 
-	checkCollisions (obj) {
+	checkCollisions (opts = {}) {
+		const { obj, closest_key: ck } = opts;
 		const collidables = this.collidable_objects;
+
+		let closest = {};
 		let results = [];
+
 		for (let i = 0; i < collidables.length; ++i) {
 			const col_obj = collidables[i];
 			if (obj.id === col_obj.id) continue;
 			const info = col_obj.checkCollision(obj);
-			if (info) results.push(info);
+			if (info) {
+				if (Array.isArray(info)) {
+					for (let k = 0; k < info.length; ++k) {
+						if (ck && closest[ck] === undefined || closest[ck] > info[k][ck]) {
+							closest = info[k];
+						}
+					}
+					results = results.concat(info);
+				} else {
+					if (ck && closest[ck] === undefined || closest[ck] > info[ck]) {
+						closest = info;
+					}
+					results.push(info);
+				}
+			}
 		}
-		return results;
+
+		return {
+			closest,
+			results
+		};
 	}
 }
 
@@ -688,22 +710,31 @@ class Projectile extends GOB {
 
 	update () {
 		if (this.resolved) return;
-		this.collisions = GOM.checkCollisions(this);
+		this.collisions = GOM.checkCollisions({
+			obj: this,
+			closest_key: 't1',
+		});
+
 		this.resolved = true;
 		setTimeout(() => {
 			this.shutdown();
-		}, 100);
+		}, 10);
 	}
 
 	draw () {
-		this.context.save();
-			this.context.beginPath();
-			this.context.lineWidth = 1;
-			this.context.moveTo(this.x, this.y);
-			this.context.lineTo(this.aim_point.x, this.aim_point.y);
-			this.context.strokeStyle = "#FFFFFF";
-			this.context.stroke();
-		this.context.restore();
+		if (this.collisions && this.collisions.closest) {
+			this.context.save();
+				this.context.beginPath();
+				this.context.lineWidth = 1;
+				this.context.moveTo(this.x, this.y);
+				this.context.lineTo(
+					this.collisions.closest.x,
+					this.collisions.closest.y
+				);
+				this.context.strokeStyle = "#FFFFFF";
+				this.context.stroke();
+			this.context.restore();
+		}
 	}
 }
 
@@ -877,6 +908,10 @@ class Game {
 
 	createDebugWalls () {
 		let walls = [
+			[0, 0, window.innerWidth, 20],
+			[window.innerWidth - 20, 0, 20, window.innerHeight],
+			[0, window.innerHeight - 20, window.innerWidth, 20],
+			[0, 0, 20, window.innerHeight],
 			[50, 600, 400, 30],
 			[200, 100, 500, 50],
 			[800, 100, 20, 600],
@@ -993,6 +1028,8 @@ class Player extends GOB {
         this.half_width = this.width / 2;
         this.half_height = this.height / 2;
 
+        this.shooting_timer = null;
+
 		return this;
     }
 
@@ -1082,13 +1119,25 @@ class Player extends GOB {
         // console.log('press');
     }
 
-    mClick (mouse) {
+    mDown (mouse) {
+        this.fireWeapon();
+        this.shooting_timer = setInterval(() => {
+            this.fireWeapon();
+        }, 100);
+    }
+
+    mUp (mouse) {
+        clearInterval(this.shooting_timer);
+        this.shooting_timer = null;
+    }
+
+    fireWeapon (mouse) {
         new Projectile({
             layer: GOM.front,
             x: this.x,
             y: this.y,
-            aim_x: mouse.x,
-            aim_y: mouse.y,
+            aim_x: GIM.mouse.x,
+            aim_y: GIM.mouse.y,
         });
     }
 
@@ -1190,7 +1239,6 @@ class Wall extends GOB {
     }
 
     checkProjectileCollision (projectile) {
-        console.log(projectile);
         this.collision_points = [];
         for (let i = 0; i < this.segments.length; ++i) {
             const seg = this.segments[i];

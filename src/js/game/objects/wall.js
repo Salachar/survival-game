@@ -79,7 +79,6 @@ class Wall extends GOB {
     }
 
     checkProjectileCollision (projectile) {
-        console.log(projectile);
         this.collision_points = [];
         for (let i = 0; i < this.segments.length; ++i) {
             const seg = this.segments[i];
