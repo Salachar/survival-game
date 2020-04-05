@@ -7,6 +7,7 @@ const GI = require('./game/game-input');
 const CONFIG = require('./game/game-config');
 
 const Player = require('./game/objects/player');
+const Wall = require('./game/objects/wall');
 
 const APP = {};
 window.APP = APP;
@@ -25,6 +26,7 @@ class Game {
 
 	start () {
 		this.spawnPlayer();
+		this.createDebugWalls();
 	}
 
 	spawnPlayer () {
@@ -32,6 +34,23 @@ class Game {
 			layer: GOM.front,
 			x: 100,
 			y: 100,
+		});
+	}
+
+	createDebugWalls () {
+		let walls = [
+			[50, 600, 400, 30],
+			[200, 100, 500, 50],
+			[800, 100, 20, 600],
+		];
+		walls.forEach((wall) => {
+			new Wall({
+				layer: GOM.middle,
+				x: wall[0],
+				y: wall[1],
+				width: wall[2],
+				height: wall[3],
+			});
 		});
 	}
 }

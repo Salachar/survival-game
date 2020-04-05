@@ -1,4 +1,5 @@
 const GOM = require('../../core/game-object-manager');
+const GIM = require('../../core/game-input-manager');
 const GOB = require('../../core/game-object-base');
 const CONFIG = require('../game-config');
 
@@ -14,6 +15,7 @@ class Player extends GOB {
         this.velY = 0;
 
         this.speed = 3;
+        this.speed_diagonal = this.speed * 0.715;
 
 		this.width = 20;
         this.height = 20;
@@ -24,7 +26,64 @@ class Player extends GOB {
         this.half_height = this.height / 2;
 
 		return this;
-	}
+    }
+
+    checkPlayerMovement () {
+        if (GIM.isKeyDown('W')) {
+            this.velY = -this.speed;
+            if (GIM.isKeyDown('A')) {
+                this.velX = -this.speed_diagonal;
+                this.velY = -this.speed_diagonal;
+            }
+            if (GIM.isKeyDown('D')) {
+                this.velX = this.speed_diagonal;
+                this.velY = -this.speed_diagonal;
+            }
+        }
+
+        if (GIM.isKeyDown('S')) {
+            this.velY = this.speed;
+            if (GIM.isKeyDown('A')) {
+                this.velX = -this.speed_diagonal;
+                this.velY = this.speed_diagonal;
+            }
+            if (GIM.isKeyDown('D')) {
+                this.velX = this.speed_diagonal;
+                this.velY = this.speed_diagonal;
+            }
+        }
+
+        if (GIM.isKeyDown('A')) {
+            this.velX = -this.speed;
+            if (GIM.isKeyDown('W')) {
+                this.velX = -this.speed_diagonal;
+                this.velY = -this.speed_diagonal;
+            }
+            if (GIM.isKeyDown('S')) {
+                this.velX = -this.speed_diagonal;
+                this.velY = this.speed_diagonal;
+            }
+        }
+
+        if (GIM.isKeyDown('D')) {
+            this.velX = this.speed;
+            if (GIM.isKeyDown('W')) {
+                this.velX = this.speed_diagonal;
+                this.velY = -this.speed_diagonal;
+            }
+            if (GIM.isKeyDown('S')) {
+                this.velX = this.speed_diagonal;
+                this.velY = this.speed_diagonal;
+            }
+        }
+
+        if (!GIM.isKeyDown('W S')) {
+            this.velY = 0;
+        }
+        if (!GIM.isKeyDown('A D')) {
+            this.velX = 0;
+        }
+    }
 
 	update () {
         this.x += this.velX;
@@ -32,48 +91,36 @@ class Player extends GOB {
     }
 
     keyDown (key) {
-        if (key === 'UP' ||  key === 'W') {
-            this.velY = -this.speed;
-        }
-        if (key === 'DOWN' ||  key === 'S') {
-            this.velY = this.speed;
-        }
-        if (key === 'LEFT' ||  key === 'A') {
-            this.velX = -this.speed;
-        }
-        if (key === 'RIGHT' ||  key === 'D') {
-            this.velX = this.speed;
-        }
+        this.checkPlayerMovement();
     }
 
     keyUp (key) {
-        if (key === 'UP' ||  key === 'W') {
-            this.velY = 0;
-        }
-        if (key === 'DOWN' ||  key === 'S') {
-            this.velY = 0;
-        }
-        if (key === 'LEFT' ||  key === 'A') {
-            this.velX = 0;
-        }
-        if (key === 'RIGHT' ||  key === 'D') {
-            this.velX = 0;
-        }
+        // if (key === 'UP' ||  key === 'W') {
+        //     this.velY = 0;
+        // }
+        // if (key === 'DOWN' ||  key === 'S') {
+        //     this.velY = 0;
+        // }
+        // if (key === 'LEFT' ||  key === 'A') {
+        //     this.velX = 0;
+        // }
+        // if (key === 'RIGHT' ||  key === 'D') {
+        //     this.velX = 0;
+        // }
+        this.checkPlayerMovement();
     }
 
     keyPress () {
-        console.log('press');
+        // console.log('press');
     }
 
     mClick (mouse) {
-        console.log('click');
-        console.log(this);
         new Projectile({
             layer: GOM.front,
             x: this.x,
             y: this.y,
-            velX: (mouse.x - this.x) * 0.01,
-            velY: (mouse.y - this.y) * 0.01
+            aim_x: mouse.x,
+            aim_y: mouse.y,
         });
     }
 

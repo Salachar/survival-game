@@ -259,6 +259,18 @@ class GOM {
 		this.middle.clear();
 		this.back.clear();
 	}
+
+	checkCollisions (obj) {
+		const collidables = this.collidable_objects;
+		let results = [];
+		for (let i = 0; i < collidables.length; ++i) {
+			const col_obj = collidables[i];
+			if (obj.id === col_obj.id) continue;
+			const info = col_obj.checkCollision(obj);
+			if (info) results.push(info);
+		}
+		return results;
+	}
 }
 
 module.exports = new GOM();

@@ -38,11 +38,23 @@ class GIM {
 			}
 		};
 
+		this.wasd_arrows_match = true;
+
 		this.keysDown = {};
 		this.input_managers = [];
 
 		this.setupKeyEvents();
 		this.setupControlCanvasEvents();
+	}
+
+	isKeyDown (keys) {
+		const keys_split = keys.split(' ');
+		for (let i = 0; i < keys_split.length; ++i) {
+			if (this.keysDown[keys_split[i]]) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	register (input_manager) {

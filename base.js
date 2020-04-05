@@ -349,6 +349,18 @@ class GOM {
 		this.middle.clear();
 		this.back.clear();
 	}
+
+	checkCollisions (obj) {
+		const collidables = this.collidable_objects;
+		let results = [];
+		for (let i = 0; i < collidables.length; ++i) {
+			const col_obj = collidables[i];
+			if (obj.id === col_obj.id) continue;
+			const info = col_obj.checkCollision(obj);
+			if (info) results.push(info);
+		}
+		return results;
+	}
 }
 
 module.exports = new GOM();
@@ -520,11 +532,23 @@ class GIM {
 			}
 		};
 
+		this.wasd_arrows_match = true;
+
 		this.keysDown = {};
 		this.input_managers = [];
 
 		this.setupKeyEvents();
 		this.setupControlCanvasEvents();
+	}
+
+	isKeyDown (keys) {
+		const keys_split = keys.split(' ');
+		for (let i = 0; i < keys_split.length; ++i) {
+			if (this.keysDown[keys_split[i]]) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	register (input_manager) {
@@ -613,15 +637,17 @@ module.exports = new GIM();
 
 const GOM = __webpack_require__(0);
 const GOB = __webpack_require__(5);
-const CONFIG = __webpack_require__(1);
-
-const { getDistance, getRandomInt, rgba, sqr } = __webpack_require__(2);
 
 class Projectile extends GOB {
 	constructor (opts = {}) {
 		super(opts);
 
 		this.type = "projectile";
+
+		this.aim_point = {
+			x: opts.aim_x,
+			y: opts.aim_y,
+		};
 
 		this.z = 1000000;
 
@@ -630,6 +656,8 @@ class Projectile extends GOB {
 
 		this.width = 2;
 		this.height = 2;
+
+		this.resolved = false;
 
 		return this;
 	}
@@ -653,60 +681,28 @@ class Projectile extends GOB {
 	checkBounds () {
 		const x_bound = this.layer.canvas.width;
 		const y_bound = this.layer.canvas.height;
-
-		if (CONFIG.confine_projectiles) {
-			if (this.x < 0 || this.x > x_bound) {
-				this.velX *= -1;
-			}
-			if (this.y < 0 || this.y > y_bound) {
-				this.velY *= -1;
-			}
-		} else {
-			if (this.x > x_bound || this.x < 0 || this.y > y_bound || this.y < 0) {
-				this.shutdown();
-			}
+		if (this.x > x_bound || this.x < 0 || this.y > y_bound || this.y < 0) {
+			this.shutdown();
 		}
 	}
 
-	checkCollisions () {
-		GOM.onCollidables('checkCollision', {
-			caller: this
-		});
-	}
-
 	update () {
-		this.x += this.velX;
-		this.y += this.velY;
-		// if (this.)
-		this.checkBounds();
-		if (this.remove) return;
-		this.checkCollisions();
+		if (this.resolved) return;
+		this.collisions = GOM.checkCollisions(this);
+		this.resolved = true;
+		setTimeout(() => {
+			this.shutdown();
+		}, 100);
 	}
 
 	draw () {
 		this.context.save();
-			// this.context.shadowBlur = 10;
-			// this.context.shadowColor = '#FFFFFF';
-
 			this.context.beginPath();
-			this.context.rect(this.x - 1, this.y - 1, 2, 2);
-			this.context.fillStyle = '#FFFFFF';
-			this.context.fill();
-
-			// // Draw the tail on the asteroid
-			// this.context.save();
-			// 	this.context.globalAlpha = 0.3;
-			// 	this.context.beginPath();
-			// 	this.context.lineWidth = 2;
-			// 	this.context.moveTo(this.x -1, this.y -1);
-			// 	this.context.lineTo(
-			// 		(this.x -1) + (-1 * this.velX * 5),
-			// 		(this.y -1) + (-1 * this.velY * 5)
-			// 	);
-
-			// 	this.context.strokeStyle = "#FFFFFF";
-			// 	this.context.stroke();
-			// this.context.restore();
+			this.context.lineWidth = 1;
+			this.context.moveTo(this.x, this.y);
+			this.context.lineTo(this.aim_point.x, this.aim_point.y);
+			this.context.strokeStyle = "#FFFFFF";
+			this.context.stroke();
 		this.context.restore();
 	}
 }
@@ -849,6 +845,7 @@ const GI = __webpack_require__(8);
 const CONFIG = __webpack_require__(1);
 
 const Player = __webpack_require__(9);
+const Wall = __webpack_require__(10);
 
 const APP = {};
 window.APP = APP;
@@ -867,6 +864,7 @@ class Game {
 
 	start () {
 		this.spawnPlayer();
+		this.createDebugWalls();
 	}
 
 	spawnPlayer () {
@@ -874,6 +872,23 @@ class Game {
 			layer: GOM.front,
 			x: 100,
 			y: 100,
+		});
+	}
+
+	createDebugWalls () {
+		let walls = [
+			[50, 600, 400, 30],
+			[200, 100, 500, 50],
+			[800, 100, 20, 600],
+		];
+		walls.forEach((wall) => {
+			new Wall({
+				layer: GOM.middle,
+				x: wall[0],
+				y: wall[1],
+				width: wall[2],
+				height: wall[3],
+			});
 		});
 	}
 }
@@ -952,6 +967,7 @@ module.exports = new GI();
 /***/ (function(module, exports, __webpack_require__) {
 
 const GOM = __webpack_require__(0);
+const GIM = __webpack_require__(3);
 const GOB = __webpack_require__(5);
 const CONFIG = __webpack_require__(1);
 
@@ -967,6 +983,7 @@ class Player extends GOB {
         this.velY = 0;
 
         this.speed = 3;
+        this.speed_diagonal = this.speed * 0.715;
 
 		this.width = 20;
         this.height = 20;
@@ -977,7 +994,64 @@ class Player extends GOB {
         this.half_height = this.height / 2;
 
 		return this;
-	}
+    }
+
+    checkPlayerMovement () {
+        if (GIM.isKeyDown('W')) {
+            this.velY = -this.speed;
+            if (GIM.isKeyDown('A')) {
+                this.velX = -this.speed_diagonal;
+                this.velY = -this.speed_diagonal;
+            }
+            if (GIM.isKeyDown('D')) {
+                this.velX = this.speed_diagonal;
+                this.velY = -this.speed_diagonal;
+            }
+        }
+
+        if (GIM.isKeyDown('S')) {
+            this.velY = this.speed;
+            if (GIM.isKeyDown('A')) {
+                this.velX = -this.speed_diagonal;
+                this.velY = this.speed_diagonal;
+            }
+            if (GIM.isKeyDown('D')) {
+                this.velX = this.speed_diagonal;
+                this.velY = this.speed_diagonal;
+            }
+        }
+
+        if (GIM.isKeyDown('A')) {
+            this.velX = -this.speed;
+            if (GIM.isKeyDown('W')) {
+                this.velX = -this.speed_diagonal;
+                this.velY = -this.speed_diagonal;
+            }
+            if (GIM.isKeyDown('S')) {
+                this.velX = -this.speed_diagonal;
+                this.velY = this.speed_diagonal;
+            }
+        }
+
+        if (GIM.isKeyDown('D')) {
+            this.velX = this.speed;
+            if (GIM.isKeyDown('W')) {
+                this.velX = this.speed_diagonal;
+                this.velY = -this.speed_diagonal;
+            }
+            if (GIM.isKeyDown('S')) {
+                this.velX = this.speed_diagonal;
+                this.velY = this.speed_diagonal;
+            }
+        }
+
+        if (!GIM.isKeyDown('W S')) {
+            this.velY = 0;
+        }
+        if (!GIM.isKeyDown('A D')) {
+            this.velX = 0;
+        }
+    }
 
 	update () {
         this.x += this.velX;
@@ -985,48 +1059,36 @@ class Player extends GOB {
     }
 
     keyDown (key) {
-        if (key === 'UP' ||  key === 'W') {
-            this.velY = -this.speed;
-        }
-        if (key === 'DOWN' ||  key === 'S') {
-            this.velY = this.speed;
-        }
-        if (key === 'LEFT' ||  key === 'A') {
-            this.velX = -this.speed;
-        }
-        if (key === 'RIGHT' ||  key === 'D') {
-            this.velX = this.speed;
-        }
+        this.checkPlayerMovement();
     }
 
     keyUp (key) {
-        if (key === 'UP' ||  key === 'W') {
-            this.velY = 0;
-        }
-        if (key === 'DOWN' ||  key === 'S') {
-            this.velY = 0;
-        }
-        if (key === 'LEFT' ||  key === 'A') {
-            this.velX = 0;
-        }
-        if (key === 'RIGHT' ||  key === 'D') {
-            this.velX = 0;
-        }
+        // if (key === 'UP' ||  key === 'W') {
+        //     this.velY = 0;
+        // }
+        // if (key === 'DOWN' ||  key === 'S') {
+        //     this.velY = 0;
+        // }
+        // if (key === 'LEFT' ||  key === 'A') {
+        //     this.velX = 0;
+        // }
+        // if (key === 'RIGHT' ||  key === 'D') {
+        //     this.velX = 0;
+        // }
+        this.checkPlayerMovement();
     }
 
     keyPress () {
-        console.log('press');
+        // console.log('press');
     }
 
     mClick (mouse) {
-        console.log('click');
-        console.log(this);
         new Projectile({
             layer: GOM.front,
             x: this.x,
             y: this.y,
-            velX: (mouse.x - this.x) * 0.01,
-            velY: (mouse.y - this.y) * 0.01
+            aim_x: mouse.x,
+            aim_y: mouse.y,
         });
     }
 
@@ -1041,6 +1103,366 @@ class Player extends GOB {
 }
 
 module.exports = Player;
+
+
+/***/ }),
+/* 10 */
+/***/ (function(module, exports, __webpack_require__) {
+
+const GOM = __webpack_require__(0);
+const GIM = __webpack_require__(3);
+const GOB = __webpack_require__(5);
+
+const { getIntersection } = __webpack_require__(11);
+
+class Wall extends GOB {
+	constructor (opts = {}) {
+		super(opts);
+
+        this.type = "wall";
+        this.collidable = true;
+
+		this.width = opts.width;
+        this.height = opts.height;
+
+        this.collision_points = [];
+
+        // We'll want the center of the player and don't want to
+        // calculate this all the time
+        this.half_width = this.width / 2;
+        this.half_height = this.height / 2;
+
+        this.segments = this.generateSegments();
+
+		return this;
+    }
+
+    generateSegments () {
+        return [
+            { // TOP
+                p1: {
+                    x: this.x,
+                    y: this.y,
+                },
+                p2: {
+                    x: this.x + this.width,
+                    y: this.y,
+                },
+            },
+            { // RIGHT
+                p1: {
+                    x: this.x + this.width,
+                    y: this.y,
+                },
+                p2: {
+                    x: this.x + this.width,
+                    y: this.y + this.height,
+                },
+            },
+            { // BOTTOM
+                p1: {
+                    x: this.x,
+                    y: this.y + this.height,
+                },
+                p2: {
+                    x: this.x + this.width,
+                    y: this.y + this.height,
+                },
+            },
+            { // LEFT
+                p1: {
+                    x: this.x,
+                    y: this.y,
+                },
+                p2: {
+                    x: this.x,
+                    y: this.y + this.height,
+                },
+            },
+        ]
+    }
+
+    checkCollision (obj) {
+        if (!obj) return null;
+        if (obj.type === 'projectile') {
+            return this.checkProjectileCollision(obj);
+        }
+    }
+
+    checkProjectileCollision (projectile) {
+        console.log(projectile);
+        this.collision_points = [];
+        for (let i = 0; i < this.segments.length; ++i) {
+            const seg = this.segments[i];
+            const projectile_vector = {
+                px : projectile.x,
+                py : projectile.y,
+                dx : projectile.aim_point.x - projectile.x,
+                dy : projectile.aim_point.y - projectile.y,
+            };
+            const wall_segment = {
+                px : seg.p1.x,
+                py : seg.p1.y,
+                dx : seg.p2.x - seg.p1.x,
+                dy : seg.p2.y - seg.p1.y,
+            };
+            const info = getIntersection(projectile_vector, wall_segment);
+            if (info && info.t1 >= 0 && info.t2 >= 0 && info.t2 <= 1) {
+                this.collision_points.push(info);
+            }
+        }
+        this.layer.update = true;
+        return this.collision_points;
+    }
+
+	update () {
+
+    }
+
+	draw () {
+		this.context.save();
+			this.context.beginPath();
+			this.context.rect(this.x, this.y, this.width, this.height);
+			this.context.fillStyle = '#FFFFFF';
+			this.context.fill();
+            for (var i = 0; i < this.collision_points.length; ++i) {
+                const p = this.collision_points[i];
+                this.context.beginPath();
+                this.context.rect(p.x - 5, p.y - 5, 10, 10);
+                this.context.fillStyle = '#FF0000';
+                this.context.fill();
+            }
+        this.context.restore();
+	}
+}
+
+module.exports = Wall;
+
+
+/***/ }),
+/* 11 */
+/***/ (function(module, exports) {
+
+const Helpers = {
+    copy: function (object) {
+        if (!object) return null;
+        return JSON.parse(JSON.stringify(object));
+    },
+
+    pointMatch: function (p1, p2, tolerance) {
+        tolerance = tolerance || 0;
+        return (Math.abs(p1.x - p2.x) <= tolerance && Math.abs(p1.y - p2.y) <= tolerance);
+    },
+
+    rgb: function (r,g,b) {
+        return "rgb(" + r + "," + g + "," + b + ")";
+    },
+
+    rgba: function (r,g,b,a) {
+        a = (a || a === 0) ? a : 1;
+        return "rgba(" + r + "," + g + "," + b + "," + a + ")";
+    },
+
+    randomRGBA: function (alpha) {
+        alpha = (typeof alpha === 'number') ? alpha : 1;
+        const r = Math.floor(Math.random() * 255 + 1);
+        const g = Math.floor(Math.random() * 255 + 1);
+        const b = Math.floor(Math.random() * 255 + 1);
+        return 'rgba(' + r + ',' + g + ',' + b + ',' + alpha + ')';
+    },
+
+    sqr: function (value) {
+        return value * value;
+    },
+
+    distanceBetween: function (obj1, obj2) {
+        if (!obj1 || !obj2) return null;
+        return Math.sqrt(
+            Helpers.sqr(obj2.x - obj1.x) + Helpers.sqr(obj2.y - obj1.y)
+        );
+    },
+
+    closestDistanceToLine: function (obj1, obj2) {
+
+    },
+
+    pDistance: function (point, item, opts = {}) {
+        if (!point || !item) return;
+        if (item.segment) item = item.segment;
+
+        // The "item" can be anything, segment, light, point
+        // If it's a simple point, get the distance and return
+        if (item.x && item.y && !item.p1) {
+            return {
+                distance: Math.sqrt(Helpers.sqr(item.x - point.x) + Helpers.sqr(item.y - point.y)),
+                x: item.x,
+                y: item.y
+            }
+        }
+
+        if (item.position) {
+            return {
+                distance: Math.sqrt(Helpers.sqr(item.position.x - point.x) + Helpers.sqr(item.position.y - point.y)),
+                x: item.position.x,
+                y: item.position.y
+            }
+        }
+
+        // Now we're looking at a segment with p1 and p2, check the endpoints first
+        let p1_match = Helpers.pointMatch(point, item.p1, 1);
+        let p2_match = Helpers.pointMatch(point, item.p2, 1);
+        if (opts.line_only && (p1_match || p2_match)) {
+            return {
+                distance: null,
+                x: null,
+                y: null
+            };
+        }
+
+        return Helpers.distanceToLine(point, item);
+    },
+
+    distanceToLine: function (point, line) {
+        const A = point.x - line.p1.x;
+        const B = point.y - line.p1.y;
+        const C = line.p2.x - line.p1.x;
+        const D = line.p2.y - line.p1.y;
+
+        const dot = (A * C) + (B * D);
+        const len_sq = (C * C) + (D * D);
+        const param = (len_sq !== 0) ? (dot / len_sq) : -1;
+
+        let xx = 0;
+        let yy = 0;
+        if (param < 0) {
+            xx = line.p1.x;
+            yy = line.p1.y;
+        } else if (param > 1) {
+            xx = line.p2.x;
+            yy = line.p2.y;
+        } else {
+            xx = line.p1.x + param * C;
+            yy = line.p1.y + param * D;
+        }
+
+        const dx = point.x - xx;
+        const dy = point.y - yy;
+        return {
+            distance: Math.sqrt(Helpers.sqr(dx) + Helpers.sqr(dy)),
+            x: xx,
+            y: yy
+        }
+    },
+
+    getIntersection (r, s) {
+        if ((r.dx / r.dy) == (s.dx / s.dy)) return null;
+
+        const t2 = (r.dx * (s.py - r.py) + r.dy * (r.px - s.px)) / (s.dx * r.dy - s.dy * r.dx);
+        const t1 = (r.dx != 0) ? (s.px + s.dx * t2 - r.px) / r.dx : (s.py + s.dy * t2 - r.py) / r.dy;
+
+        return {
+            x: r.px + (t1 * r.dx),
+            y: r.py + (t1 * r.dy),
+            t2: t2,
+            t1: t1
+        };
+    },
+
+    getDotProduct: function (v1, v2) {
+        return v1.x * v2.x + v1.y * v2.y;
+    },
+
+    getMagnitude: function (v) {
+        return Math.sqrt(Helpers.sqr(v.x) + Helpers.sqr(v.y));
+    },
+
+    getAngleBetweenVectors: function (v1, v2) {
+        const dot = Helpers.getDotProduct(v1, v2);
+        const v1_mag = Helpers.getMagnitude(v1);
+        const v2_mag = Helpers.getMagnitude(v2);
+        const cos_angle = dot / (v1_mag * v2_mag);
+        const angle = Math.acos(cos_angle);
+        return angle;
+    },
+
+    getNormal: function (segment, reference_point) {
+        reference_point = reference_point || Mouse;
+        // the "open" normal will be on the side
+        // of the reference point, the mouse in most cases
+        if (!segment) return;
+        if (segment.segment) segment = segment.segment;
+
+        // Get a unit vector of that perpendicular
+        let unit_vector = Helpers.getUnitVector(segment);
+
+        let perp_unit_vector = {
+            x: unit_vector.y,
+            y: unit_vector.x * -1
+        };
+
+        // Get the middle of the origin segment
+        let middle_point = Helpers.getSegmentMiddle(segment);
+
+        // Add some distance to the unit normal (for show)
+        let dist_mod = 20;
+        let mod_vector = {
+            x: perp_unit_vector.x * dist_mod,
+            y: perp_unit_vector.y * dist_mod
+        };
+
+        let point_one = {
+            x: Math.round(middle_point.x + mod_vector.x),
+            y: Math.round(middle_point.y + mod_vector.y)
+        };
+
+        let point_two = {
+            x: Math.round(middle_point.x - mod_vector.x),
+            y: Math.round(middle_point.y - mod_vector.y)
+        };
+
+        let dist_one = Helpers.pDistance(reference_point, point_one);
+        let dist_two = Helpers.pDistance(reference_point, point_two);
+
+        if (dist_one.distance <= dist_two.distance) {
+            return {
+                open: point_one,
+                closed: point_two
+            };
+        }
+        return {
+            open: point_two,
+            closed: point_one
+        };
+    },
+
+    getSlope: function (p1, p2) {
+        return (p2.y - p1.y) / (p2.x - p1.x);
+    },
+
+    getUnitVector: function (segment) {
+        let vector = {
+            x: segment.p2.x - segment.p1.x,
+            y: segment.p2.y - segment.p1.y
+        };
+        let mag = Math.sqrt(Helpers.sqr(vector.x) + Helpers.sqr(vector.y));
+        return {
+            x: vector.x / mag,
+            y: vector.y / mag
+        };
+    },
+
+    getPerpendicularUnitVector: function (segment) {
+        let unit_vector = Helpers.getUnitVector(segment);
+        let perp = {
+            x: unit_vector.y,
+            y: unit_vector.x * -1
+        }
+        return perp;
+    }
+};
+
+
+module.exports = Helpers;
 
 
 /***/ })
