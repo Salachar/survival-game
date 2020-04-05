@@ -1,7 +1,6 @@
 const GOM = require('../../core/game-object-manager');
 const GIM = require('../../core/game-input-manager');
 const GOB = require('../../core/game-object-base');
-const CONFIG = require('../game-config');
 
 const Projectile = require('./projectile');
 
@@ -14,7 +13,7 @@ class Player extends GOB {
         this.velX = 0;
         this.velY = 0;
 
-        this.speed = 3;
+        this.speed = 5;
         this.speed_diagonal = this.speed * 0.715;
 
 		this.width = 20;
@@ -133,15 +132,20 @@ class Player extends GOB {
             layer: GOM.front,
             x: this.x,
             y: this.y,
-            aim_x: GIM.mouse.x,
-            aim_y: GIM.mouse.y,
+            aim_x: GIM.mouse.x + GOM.camera_offset.x,
+            aim_y: GIM.mouse.y + GOM.camera_offset.y,
         });
     }
 
-	draw () {
+	draw (opts = {}) {
 		this.context.save();
-			this.context.beginPath();
-			this.context.rect(this.x - this.half_width, this.y - this.half_height, this.width, this.height);
+            this.context.beginPath();
+			this.context.rect(
+                this.x - GOM.camera_offset.x - this.half_width,
+                this.y - GOM.camera_offset.y - this.half_height,
+                this.width,
+                this.height
+            );
 			this.context.fillStyle = '#FFFFFF';
 			this.context.fill();
 		this.context.restore();

@@ -6,7 +6,7 @@ const { getIntersection } = require('../../lib/math');
 
 class Wall extends GOB {
 	constructor (opts = {}) {
-		super(opts);
+        super(opts);
 
         this.type = "wall";
         this.collidable = true;
@@ -107,16 +107,26 @@ class Wall extends GOB {
 
     }
 
-	draw () {
+	draw (opts = {}) {
 		this.context.save();
 			this.context.beginPath();
-			this.context.rect(this.x, this.y, this.width, this.height);
+			this.context.rect(
+                this.x - GOM.camera_offset.x,
+                this.y - GOM.camera_offset.y,
+                this.width,
+                this.height
+            );
 			this.context.fillStyle = '#FFFFFF';
 			this.context.fill();
             for (var i = 0; i < this.collision_points.length; ++i) {
                 const p = this.collision_points[i];
                 this.context.beginPath();
-                this.context.rect(p.x - 5, p.y - 5, 10, 10);
+                this.context.rect(
+                    p.x - GOM.camera_offset.x - 5,
+                    p.y - GOM.camera_offset.y - 5,
+                    10,
+                    10
+                );
                 this.context.fillStyle = '#FF0000';
                 this.context.fill();
             }

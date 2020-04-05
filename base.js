@@ -92,13 +92,26 @@ class GOM {
 	constructor () {
 		this.MILLISECONDS_BETWEEN_FRAMES = 16; // (1 / 60) * 1000
 		this.GAME_LOOP = 0;
-		this.last_frame = new Date().getTime();
+		// this.last_frame = new Date().getTime();
 
 		this.__props = {};
 
 		this.__props.game_objects = [];
 		this.__props.collidable_objects = [];
 		this.__props.added_game_objects = [];
+
+		this.camera_offset = {
+			x: 0,
+			y: 0,
+		};
+
+		// There can only be one camera object
+		// This is used for scrolling and the GOM will
+		// keep the camera object centered and offset everything else
+		// as it moves
+		this.camera_object = null;
+
+		this.canvas_container = document.getElementById('canvas_container');
 
 		this.startup();
 	}
@@ -163,10 +176,19 @@ class GOM {
 		// through manual calls.
 
 		// calculate the time since the last frame
-		const this_frame = new Date().getTime();
-		const dt = (this_frame - this.last_frame) / 1000;
-		this.last_frame = this_frame;
+		// const this_frame = new Date().getTime();
+		// const dt = (this_frame - this.last_frame) / 1000;
+		// this.last_frame = this_frame;
 		// this.el_fps_counter.innerHTML = Math.ceil(1 / dt);
+
+		if (this.camera_object) {
+			if (this.camera_object.x > this.half_canvas_container_width) {
+				this.camera_offset.x = this.camera_object.x - this.half_canvas_container_width;
+			}
+			if (this.camera_object.y > this.half_canvas_container_height) {
+				this.camera_offset.y = this.camera_object.y - this.half_canvas_container_height;
+			}
+		}
 
 		this.addNewGameObjects();
 
@@ -247,20 +269,20 @@ class GOM {
 
 	setCanvasSize () {
 		// Get the width and height for you canvas, taking into account any constant menus.
-		const container = document.getElementById('canvas_container');
-		let canvasWidth = container.clientWidth;
-		let canvasHeight = container.clientHeight;
-
+		this.canvas_container_width = this.canvas_container.clientWidth;
+		this.canvas_contatiner_height = this.canvas_container.clientHeight;
+		this.half_canvas_container_width = this.canvas_container_width / 2;
+		this.half_canvas_container_height = this.canvas_contatiner_height / 2;
 		// Loop through the canvases and set the width and height
 		['control', 'effects', 'front', 'middle', 'back'].forEach((canvas_key) => {
-			this[canvas_key].canvas.setAttribute('width', canvasWidth + 'px');
-			this[canvas_key].canvas.setAttribute('height', canvasHeight + 'px');
-			this[canvas_key].canvas.style.width  = canvasWidth + 'px';
-			this[canvas_key].canvas.style.height = canvasHeight + 'px';
-			this[canvas_key].backBuffer.setAttribute('width', canvasWidth + 'px');
-			this[canvas_key].backBuffer.setAttribute('height', canvasHeight + 'px');
-			this[canvas_key].backBuffer.style.width  = canvasWidth + 'px';
-			this[canvas_key].backBuffer.style.height = canvasHeight + 'px';
+			this[canvas_key].canvas.setAttribute('width', this.canvas_container_width + 'px');
+			this[canvas_key].canvas.setAttribute('height', this.canvas_contatiner_height + 'px');
+			this[canvas_key].canvas.style.width  = this.canvas_container_width + 'px';
+			this[canvas_key].canvas.style.height = this.canvas_contatiner_height + 'px';
+			this[canvas_key].backBuffer.setAttribute('width', this.canvas_container_width + 'px');
+			this[canvas_key].backBuffer.setAttribute('height', this.canvas_contatiner_height + 'px');
+			this[canvas_key].backBuffer.style.width  = this.canvas_container_width + 'px';
+			this[canvas_key].backBuffer.style.height = this.canvas_contatiner_height + 'px';
 		});
 	}
 
@@ -337,6 +359,9 @@ class GOM {
 	}
 
 	addGameObject (game_object) {
+		if (game_object.camera_follow) {
+			this.camera_object = game_object;
+		}
 		this.added_game_objects.push(game_object);
 		if (game_object.layer) {
 			game_object.layer.objects.list.push(game_object);
@@ -721,15 +746,18 @@ class Projectile extends GOB {
 		}, 10);
 	}
 
-	draw () {
+	draw (opts = {}) {
 		if (this.collisions && this.collisions.closest) {
 			this.context.save();
 				this.context.beginPath();
 				this.context.lineWidth = 1;
-				this.context.moveTo(this.x, this.y);
+				this.context.moveTo(
+					this.x - GOM.camera_offset.x,
+					this.y - GOM.camera_offset.y,
+				);
 				this.context.lineTo(
-					this.collisions.closest.x,
-					this.collisions.closest.y
+					this.collisions.closest.x - GOM.camera_offset.x,
+					this.collisions.closest.y - GOM.camera_offset.y,
 				);
 				this.context.strokeStyle = "#FFFFFF";
 				this.context.stroke();
@@ -753,6 +781,8 @@ const uuid = Helpers.uuid;
 class GOB {
 	constructor (opts = {}) {
 		this.id = uuid();
+
+		this.camera_follow = opts.camera_follow || false;
 
 		this.x = opts.x || 0;
 		this.y = opts.y || 0;
@@ -878,11 +908,15 @@ const CONFIG = __webpack_require__(1);
 const Player = __webpack_require__(9);
 const Wall = __webpack_require__(10);
 
+const World = __webpack_require__(12);
+
 const APP = {};
 window.APP = APP;
 
 class Game {
 	constructor () {
+		this.world = null;
+
 		this.initialize();
 		this.start();
 	}
@@ -894,8 +928,10 @@ class Game {
 	}
 
 	start () {
-		this.spawnPlayer();
-		this.createDebugWalls();
+		this.world = new World();
+
+		// this.spawnPlayer();
+		// this.createDebugWalls();
 	}
 
 	spawnPlayer () {
@@ -938,6 +974,23 @@ window.onload = () => {
 window.onresize = () => {
 	GOM.resize();
 }
+
+/*
+TODO:
+    Fix up collision function chain
+    make it so walls dont have to be on the outside
+     and the shoots just go some distance
+        Ill want to be able to kill offscreen enemies
+
+
+
+
+If the player is more than half screen away
+
+
+Get how far away they are from the center
+and offset everything else that much
+*/
 
 
 /***/ }),
@@ -1004,7 +1057,6 @@ module.exports = new GI();
 const GOM = __webpack_require__(0);
 const GIM = __webpack_require__(3);
 const GOB = __webpack_require__(5);
-const CONFIG = __webpack_require__(1);
 
 const Projectile = __webpack_require__(4);
 
@@ -1017,7 +1069,7 @@ class Player extends GOB {
         this.velX = 0;
         this.velY = 0;
 
-        this.speed = 3;
+        this.speed = 5;
         this.speed_diagonal = this.speed * 0.715;
 
 		this.width = 20;
@@ -1136,15 +1188,20 @@ class Player extends GOB {
             layer: GOM.front,
             x: this.x,
             y: this.y,
-            aim_x: GIM.mouse.x,
-            aim_y: GIM.mouse.y,
+            aim_x: GIM.mouse.x + GOM.camera_offset.x,
+            aim_y: GIM.mouse.y + GOM.camera_offset.y,
         });
     }
 
-	draw () {
+	draw (opts = {}) {
 		this.context.save();
-			this.context.beginPath();
-			this.context.rect(this.x - this.half_width, this.y - this.half_height, this.width, this.height);
+            this.context.beginPath();
+			this.context.rect(
+                this.x - GOM.camera_offset.x - this.half_width,
+                this.y - GOM.camera_offset.y - this.half_height,
+                this.width,
+                this.height
+            );
 			this.context.fillStyle = '#FFFFFF';
 			this.context.fill();
 		this.context.restore();
@@ -1166,7 +1223,7 @@ const { getIntersection } = __webpack_require__(11);
 
 class Wall extends GOB {
 	constructor (opts = {}) {
-		super(opts);
+        super(opts);
 
         this.type = "wall";
         this.collidable = true;
@@ -1267,16 +1324,26 @@ class Wall extends GOB {
 
     }
 
-	draw () {
+	draw (opts = {}) {
 		this.context.save();
 			this.context.beginPath();
-			this.context.rect(this.x, this.y, this.width, this.height);
+			this.context.rect(
+                this.x - GOM.camera_offset.x,
+                this.y - GOM.camera_offset.y,
+                this.width,
+                this.height
+            );
 			this.context.fillStyle = '#FFFFFF';
 			this.context.fill();
             for (var i = 0; i < this.collision_points.length; ++i) {
                 const p = this.collision_points[i];
                 this.context.beginPath();
-                this.context.rect(p.x - 5, p.y - 5, 10, 10);
+                this.context.rect(
+                    p.x - GOM.camera_offset.x - 5,
+                    p.y - GOM.camera_offset.y - 5,
+                    10,
+                    10
+                );
                 this.context.fillStyle = '#FF0000';
                 this.context.fill();
             }
@@ -1512,6 +1579,123 @@ const Helpers = {
 
 module.exports = Helpers;
 
+
+/***/ }),
+/* 12 */
+/***/ (function(module, exports, __webpack_require__) {
+
+const GOM = __webpack_require__(0);
+const GIM = __webpack_require__(3);
+const GOB = __webpack_require__(5);
+
+const Player = __webpack_require__(9);
+const Wall = __webpack_require__(10);
+
+/*
+What kind of environment do I want.
+
+    - No tiers, just one flat plane
+    - Rivers
+    - Lakes
+    - Trees (like one per tile)
+    - Forest (dense trees, 3-4 per tile or something)
+    - Rocks/Boulders (they can be kinda random size)
+    - Iron deposit
+    - Wall (like permanent unmovable/undamageable)
+*/
+
+const WORLD_MAP_LEGEND = {
+    ' ': 'EMPTY',
+    'R': 'ROCK',
+    '@': 'PLAYER_SPAWN',
+    'W': 'WALL_PERMANENT', // permanent wall is permanent rock
+};
+
+const WORLD_MAP = [
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'W                                      W',
+'W  @                   R               W',
+'W                     RR               W',
+'W                   RRRRRR             W',
+'W                      RR              W',
+'W                    R                 W',
+'W                                      W',
+'W     RRRR                     RR      W',
+'W                                      W',
+'W                                      W',
+'W                                      W',
+'W                                      W',
+'W                                      W',
+'W                                      W',
+'W                                      W',
+'W                                      W',
+'W                                      W',
+'W                                      W',
+'W                                      W',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+];
+
+class World {
+    constructor () {
+        console.log('stuff');
+
+        this.cell_size = 50;
+        this.half_cell_size = this.cell_size / 2;
+
+        this.generateWorld();
+    }
+
+    generateWorld () {
+        WORLD_MAP.forEach((row, index_y) => {
+            const row_split = row.split('');
+            row_split.forEach((tile, index_x) => {
+                const type = WORLD_MAP_LEGEND[tile];
+
+                const objectParams = {
+                    x: index_x,
+                    y: index_y,
+                };
+
+                switch (type) {
+                    case 'PLAYER_SPAWN':
+                        this.spawnPlayer(objectParams);
+                        break;
+                    case 'ROCK':
+                        this.createWall(objectParams);
+                        break;
+                    case 'WALL_PERMANENT':
+                        objectParams.permanent = true;
+                        this.createWall(objectParams);
+                        break;
+                    default: // EMPTY?
+                        break;
+                }
+            });
+        });
+    }
+
+    spawnPlayer (params = {}) {
+        // We want the player to spawn in the middle of the cell
+        new Player({
+            camera_follow: true,
+            layer: GOM.front,
+            x: (params.x * this.cell_size) + this.half_cell_size,
+            y: (params.y * this.cell_size) + this.half_cell_size,
+        });
+    }
+
+    createWall (params = {}) {
+        new Wall({
+            layer: GOM.front,
+            x: params.x * this.cell_size,
+            y: params.y * this.cell_size,
+            width: this.cell_size,
+            height: this.cell_size,
+        });
+    }
+}
+
+module.exports = World;
 
 /***/ })
 /******/ ]);

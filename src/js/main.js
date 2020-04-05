@@ -9,11 +9,15 @@ const CONFIG = require('./game/game-config');
 const Player = require('./game/objects/player');
 const Wall = require('./game/objects/wall');
 
+const World = require('./game/world');
+
 const APP = {};
 window.APP = APP;
 
 class Game {
 	constructor () {
+		this.world = null;
+
 		this.initialize();
 		this.start();
 	}
@@ -25,8 +29,10 @@ class Game {
 	}
 
 	start () {
-		this.spawnPlayer();
-		this.createDebugWalls();
+		this.world = new World();
+
+		// this.spawnPlayer();
+		// this.createDebugWalls();
 	}
 
 	spawnPlayer () {
@@ -69,3 +75,20 @@ window.onload = () => {
 window.onresize = () => {
 	GOM.resize();
 }
+
+/*
+TODO:
+    Fix up collision function chain
+    make it so walls dont have to be on the outside
+     and the shoots just go some distance
+        Ill want to be able to kill offscreen enemies
+
+
+
+
+If the player is more than half screen away
+
+
+Get how far away they are from the center
+and offset everything else that much
+*/

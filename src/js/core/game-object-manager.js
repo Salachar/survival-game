@@ -2,13 +2,26 @@ class GOM {
 	constructor () {
 		this.MILLISECONDS_BETWEEN_FRAMES = 16; // (1 / 60) * 1000
 		this.GAME_LOOP = 0;
-		this.last_frame = new Date().getTime();
+		// this.last_frame = new Date().getTime();
 
 		this.__props = {};
 
 		this.__props.game_objects = [];
 		this.__props.collidable_objects = [];
 		this.__props.added_game_objects = [];
+
+		this.camera_offset = {
+			x: 0,
+			y: 0,
+		};
+
+		// There can only be one camera object
+		// This is used for scrolling and the GOM will
+		// keep the camera object centered and offset everything else
+		// as it moves
+		this.camera_object = null;
+
+		this.canvas_container = document.getElementById('canvas_container');
 
 		this.startup();
 	}
@@ -73,10 +86,19 @@ class GOM {
 		// through manual calls.
 
 		// calculate the time since the last frame
-		const this_frame = new Date().getTime();
-		const dt = (this_frame - this.last_frame) / 1000;
-		this.last_frame = this_frame;
+		// const this_frame = new Date().getTime();
+		// const dt = (this_frame - this.last_frame) / 1000;
+		// this.last_frame = this_frame;
 		// this.el_fps_counter.innerHTML = Math.ceil(1 / dt);
+
+		if (this.camera_object) {
+			if (this.camera_object.x > this.half_canvas_container_width) {
+				this.camera_offset.x = this.camera_object.x - this.half_canvas_container_width;
+			}
+			if (this.camera_object.y > this.half_canvas_container_height) {
+				this.camera_offset.y = this.camera_object.y - this.half_canvas_container_height;
+			}
+		}
 
 		this.addNewGameObjects();
 
@@ -157,20 +179,20 @@ class GOM {
 
 	setCanvasSize () {
 		// Get the width and height for you canvas, taking into account any constant menus.
-		const container = document.getElementById('canvas_container');
-		let canvasWidth = container.clientWidth;
-		let canvasHeight = container.clientHeight;
-
+		this.canvas_container_width = this.canvas_container.clientWidth;
+		this.canvas_contatiner_height = this.canvas_container.clientHeight;
+		this.half_canvas_container_width = this.canvas_container_width / 2;
+		this.half_canvas_container_height = this.canvas_contatiner_height / 2;
 		// Loop through the canvases and set the width and height
 		['control', 'effects', 'front', 'middle', 'back'].forEach((canvas_key) => {
-			this[canvas_key].canvas.setAttribute('width', canvasWidth + 'px');
-			this[canvas_key].canvas.setAttribute('height', canvasHeight + 'px');
-			this[canvas_key].canvas.style.width  = canvasWidth + 'px';
-			this[canvas_key].canvas.style.height = canvasHeight + 'px';
-			this[canvas_key].backBuffer.setAttribute('width', canvasWidth + 'px');
-			this[canvas_key].backBuffer.setAttribute('height', canvasHeight + 'px');
-			this[canvas_key].backBuffer.style.width  = canvasWidth + 'px';
-			this[canvas_key].backBuffer.style.height = canvasHeight + 'px';
+			this[canvas_key].canvas.setAttribute('width', this.canvas_container_width + 'px');
+			this[canvas_key].canvas.setAttribute('height', this.canvas_contatiner_height + 'px');
+			this[canvas_key].canvas.style.width  = this.canvas_container_width + 'px';
+			this[canvas_key].canvas.style.height = this.canvas_contatiner_height + 'px';
+			this[canvas_key].backBuffer.setAttribute('width', this.canvas_container_width + 'px');
+			this[canvas_key].backBuffer.setAttribute('height', this.canvas_contatiner_height + 'px');
+			this[canvas_key].backBuffer.style.width  = this.canvas_container_width + 'px';
+			this[canvas_key].backBuffer.style.height = this.canvas_contatiner_height + 'px';
 		});
 	}
 
@@ -247,6 +269,9 @@ class GOM {
 	}
 
 	addGameObject (game_object) {
+		if (game_object.camera_follow) {
+			this.camera_object = game_object;
+		}
 		this.added_game_objects.push(game_object);
 		if (game_object.layer) {
 			game_object.layer.objects.list.push(game_object);

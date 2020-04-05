@@ -7,6 +7,8 @@ class GOB {
 	constructor (opts = {}) {
 		this.id = uuid();
 
+		this.camera_follow = opts.camera_follow || false;
+
 		this.x = opts.x || 0;
 		this.y = opts.y || 0;
 

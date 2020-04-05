@@ -62,15 +62,18 @@ class Projectile extends GOB {
 		}, 10);
 	}
 
-	draw () {
+	draw (opts = {}) {
 		if (this.collisions && this.collisions.closest) {
 			this.context.save();
 				this.context.beginPath();
 				this.context.lineWidth = 1;
-				this.context.moveTo(this.x, this.y);
+				this.context.moveTo(
+					this.x - GOM.camera_offset.x,
+					this.y - GOM.camera_offset.y,
+				);
 				this.context.lineTo(
-					this.collisions.closest.x,
-					this.collisions.closest.y
+					this.collisions.closest.x - GOM.camera_offset.x,
+					this.collisions.closest.y - GOM.camera_offset.y,
 				);
 				this.context.strokeStyle = "#FFFFFF";
 				this.context.stroke();
