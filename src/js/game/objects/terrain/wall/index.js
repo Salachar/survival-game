@@ -1,12 +1,23 @@
-const GOM = require('../../core/game-object-manager');
-const GIM = require('../../core/game-input-manager');
-const GOB = require('../../core/game-object-base');
+const GOM = require('core/game-object-manager');
+const GIM = require('core/game-input-manager');
+const GOB = require('core/game-object-base');
 
-const { getIntersection } = require('../../lib/math');
+const { getIntersection, degreesToRadians } = require('lib/math');
+
+const WALL_IMAGES = {
+    none: require('./wall_open_none.png'),
+    one: require('./wall_open_one.png'),
+    two: require('./wall_open_two.png'),
+    two_straight: require('./wall_open_two_straight.png'),
+    three: require('./wall_open_three.png'),
+    four: require('./wall_open_four.png'),
+}
 
 class Wall extends GOB {
 	constructor (opts = {}) {
         super(opts);
+
+        console.log(opts);
 
         this.type = "wall";
         this.collidable = true;
@@ -16,6 +27,11 @@ class Wall extends GOB {
 
         this.collision_points = [];
 
+        this.img = new Image();
+        this.image_data = this.determineImage(opts.neighbors);
+        this.image_data.rotation = degreesToRadians(this.image_data.rotation);
+        this.img.src = WALL_IMAGES[this.image_data.openings];
+
         // We'll want the center of the player and don't want to
         // calculate this all the time
         this.half_width = this.width / 2;
@@ -24,6 +40,76 @@ class Wall extends GOB {
         this.segments = this.generateSegments();
 
 		return this;
+    }
+
+    determineImage (neighbors = {}) {
+        // const { north, south, east, west } = neighbors;
+        const north = neighbors.north === 'WALL';
+        const south = neighbors.south === 'WALL';
+        const east = neighbors.east === 'WALL';
+        const west = neighbors.west === 'WALL';
+
+        let openings = 0;
+
+        if (north) openings += 1;
+        if (south) openings += 1;
+        if (east) openings += 1;
+        if (west) openings += 1;
+
+        // 0 and 4 can be returned right away, they are the same
+        // not matter the rotation
+        if (openings === 0) return {
+            openings: 'none',
+            rotation: 0
+        };
+
+        if (openings === 4) return {
+            openings: 'four',
+            rotation: 0
+        };
+
+        // For the other possibilities, we need to know how to rotate
+        // the image to line up the openings
+        // 1 Opening: default faces east
+        // 2 Openings: default faces north west, tube is west/east
+        // 3 Openings: default is north west east
+        if (openings === 1) {
+            let image_data = {
+                openings: 'one',
+                rotation: 0
+            };
+            if (north) image_data.rotation = 270;
+            if (west) image_data.rotation = 180;
+            if (south) image_data.rotation = 90;
+            return image_data;
+        }
+
+        if (openings === 2) {
+            let image_data = {
+                openings: 'two',
+                rotation: 0
+            };
+            if (north && east) image_data.rotation = 90;
+            if (east && south) image_data.rotation = 180;
+            if (south && west) image_data.rotation = 270;
+            if (north && south) {
+                image_data.openings = 'two_straight';
+                image_data.rotation = 90;
+            }
+            if (east && west) image_data.openings = 'two_straight';
+            return image_data;
+        }
+
+        if (openings === 3) { // default is north west east
+            let image_data = {
+                openings: 'three',
+                rotation: 0
+            };
+            if (!west) image_data.rotation = 90;
+            if (!north) image_data.rotation = 180;
+            if (!east) image_data.rotation = 270;
+            return image_data;
+        }
     }
 
     generateSegments () {
@@ -184,28 +270,57 @@ class Wall extends GOB {
 
 	draw (opts = {}) {
 		this.context.save();
-			this.context.beginPath();
-			this.context.rect(
+			// this.context.beginPath();
+			// this.context.rect(
+            //     this.x - GOM.camera_offset.x,
+            //     this.y - GOM.camera_offset.y,
+            //     this.width,
+            //     this.height
+            // );
+			// this.context.fillStyle = '#FFFFFF';
+            // this.context.fill();
+
+            const center = {
+                x: this.x - GOM.camera_offset.x + (this.width / 2),
+                y: this.y - GOM.camera_offset.y + (this.height / 2),
+            };
+            this.context.translate(center.x, center.y);
+            this.context.rotate(this.image_data.rotation);
+            this.context.translate(-center.x, -center.y);
+
+            this.context.drawImage(
+                this.img,
                 this.x - GOM.camera_offset.x,
-                this.y - GOM.camera_offset.y,
-                this.width,
-                this.height
+                this.y - GOM.camera_offset.y
             );
-			this.context.fillStyle = '#FFFFFF';
-			this.context.fill();
-            for (var i = 0; i < this.collision_points.length; ++i) {
-                const p = this.collision_points[i];
-                this.context.beginPath();
-                this.context.rect(
-                    p.x - GOM.camera_offset.x - 5,
-                    p.y - GOM.camera_offset.y - 5,
-                    10,
-                    10
-                );
-                this.context.fillStyle = '#FF0000';
-                this.context.fill();
-            }
+
+
+
+            // for (var i = 0; i < this.collision_points.length; ++i) {
+            //     const p = this.collision_points[i];
+            //     this.context.beginPath();
+            //     this.context.rect(
+            //         p.x - GOM.camera_offset.x - 5,
+            //         p.y - GOM.camera_offset.y - 5,
+            //         10,
+            //         10
+            //     );
+            //     this.context.fillStyle = '#FF0000';
+            //     this.context.fill();
+            // }
         this.context.restore();
+        for (var i = 0; i < this.collision_points.length; ++i) {
+            const p = this.collision_points[i];
+            this.context.beginPath();
+            this.context.rect(
+                p.x - GOM.camera_offset.x - 5,
+                p.y - GOM.camera_offset.y - 5,
+                10,
+                10
+            );
+            this.context.fillStyle = '#FF0000';
+            this.context.fill();
+        }
 	}
 }
 

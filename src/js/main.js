@@ -1,15 +1,15 @@
-const GOM = require('./core/game-object-manager');
-const GIM = require('./core/game-input-manager');
+const GOM = require('core/game-object-manager');
+const GIM = require('core/game-input-manager');
 
-const Menu = require('./game/menus/menu');
+const Menu = require('game/menus/menu');
 
-const GI = require('./game/game-input');
-const CONFIG = require('./game/game-config');
+const GI = require('game/game-input');
+const CONFIG = require('game/game-config');
 
-const Player = require('./game/objects/player');
-const Wall = require('./game/objects/wall');
+const Player = require('game/objects/player');
+const Wall = require('game/objects/terrain/wall');
 
-const World = require('./game/world');
+const World = require('game/world');
 
 const APP = {};
 window.APP = APP;

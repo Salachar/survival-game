@@ -1,9 +1,9 @@
-const GOM = require('../core/game-object-manager');
-const GIM = require('../core/game-input-manager');
-const GOB = require('../core/game-object-base');
+const GOM = require('core/game-object-manager');
+const GIM = require('core/game-input-manager');
+const GOB = require('core/game-object-base');
 
-const Player = require('./objects/player');
-const Wall = require('./objects/wall');
+const Player = require('game/objects/player');
+const Wall = require('game/objects/terrain/wall');
 
 /*
 What kind of environment do I want.
@@ -22,46 +22,55 @@ const WORLD_MAP_LEGEND = {
     ' ': 'EMPTY',
     'R': 'ROCK',
     '@': 'PLAYER_SPAWN',
-    'W': 'WALL_PERMANENT', // permanent wall is permanent rock
+    'W': 'WALL', // permanent wall is permanent rock
 };
 
 const WORLD_MAP = [
-'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
-'W                                      W',
-'W  @                   R               W',
-'W                     RR               W',
-'W                   RRRRRR             W',
-'W                      RR              W',
-'W                    R                 W',
-'W                                      W',
-'W     RRRR                     RR      W',
-'W                                      W',
-'W                                      W',
-'W                                      W',
-'W                                      W',
-'W                                      W',
-'W                                      W',
-'W                                      W',
-'W                                      W',
-'W                                      W',
-'W                                      W',
-'W                                      W',
-'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'W                                                WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'W  @                   W                         WWWWWWW                WWWWWWWW',
+'W                     WW                                   WWWWWW       WWWWWWWW',
+'W                   WWWWWWW                       WWWWWWWWWWWWWWWWWW   WWWWWWWWWW',
+'W                      WW                        WWWWWWWWWWWWWWWWW        WWWWWW',
+'W                    W                           WWWWWWWWWWWWWWWWWWWWW     WWWWW',
+'W                                                WWWWWWWWWWWWWWWWWWWWWWWWW WWWWW',
+'W     WWWW                     WW                WWWWWWWWWWWWWWWWWWWWWWWWW WWWWW',
+'W                                                WWWWWWWWWWWWWWWWWWWWWWWWW WWWWW',
+'W                                                                              W',
+'W                                                                              W',
+'W                                                                              W',
+'W                                                                              W',
+'W                                                                              W',
+'W                                                                              W',
+'W                                                                              W',
+'W                                                                              W',
+'W                                                                              W',
+'W                                                                              W',
+'W                                                                              W',
+'W                                                                              W',
+'W                                                                              W',
+'W                                                                              W',
+'W                                                                              W',
+'W                                                                              W',
+'W                                                                              W',
+'W                                                                              W',
+'W                                                                              W',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
 ];
 // const WORLD_MAP = [
-// '        WW                              ',
+// '                                        ',
 // '         W                              ',
-// '   @                                    ',
-// '        WW                              ',
-// '        WW                              ',
+// '   @        W                WWWW       ',
+// '         WW W                W  W       ',
+// '                             W  W       ',
+// '    W    W          W        WWWW       ',
+// '   WWW  WW   WWW    WW                  ',
+// '         W    W     W                   ',
 // '                                        ',
 // '                                        ',
-// '                                        ',
-// '                                        ',
-// '                                        ',
-// '                                        ',
-// '                                        ',
-// '                                        ',
+// '     W        WW                        ',
+// '    WWW      WWWW                       ',
+// '     W        WW                        ',
 // '                                        ',
 // '                                        ',
 // '                                        ',
@@ -75,7 +84,7 @@ const WORLD_MAP = [
 // '                                        ',
 // '                                        ',
 // '   @                                    ',
-// '        W                               ',
+// '        WW                              ',
 // '                                        ',
 // '                                        ',
 // '                                        ',
@@ -106,20 +115,30 @@ class World {
             height: WORLD_MAP.length * this.cell_size,
         };
 
-        this.generateWorld();
+        this.world = this.parseWorld(WORLD_MAP);
+        this.generateWorld(this.world);
     }
 
-    generateWorld () {
-        WORLD_MAP.forEach((row, index_y) => {
-            const row_split = row.split('');
-            row_split.forEach((tile, index_x) => {
+    parseWorld (map) {
+        return map.map((map_row) => {
+            return map_row.split('');
+        });
+    }
+
+    generateWorld (world) {
+        world.forEach((row, y) => {
+            row.forEach((tile, x) => {
                 const type = WORLD_MAP_LEGEND[tile];
-
                 const objectParams = {
-                    x: index_x,
-                    y: index_y,
+                    x,
+                    y,
+                    neighbors: {
+                        north: WORLD_MAP_LEGEND[(world[y - 1] || [])[x] || null],
+                        south: WORLD_MAP_LEGEND[(world[y + 1] || [])[x] || null],
+                        east: WORLD_MAP_LEGEND[(world[y] || [])[x + 1] || null],
+                        west: WORLD_MAP_LEGEND[(world[y] || [])[x - 1] || null]
+                    }
                 };
-
                 switch (type) {
                     case 'PLAYER_SPAWN':
                         this.spawnPlayer(objectParams);
@@ -127,7 +146,7 @@ class World {
                     case 'ROCK':
                         this.createWall(objectParams);
                         break;
-                    case 'WALL_PERMANENT':
+                    case 'WALL':
                         objectParams.permanent = true;
                         this.createWall(objectParams);
                         break;
@@ -141,6 +160,7 @@ class World {
     spawnPlayer (params = {}) {
         // We want the player to spawn in the middle of the cell
         new Player({
+            ...params,
             camera_follow: true,
             layer: GOM.front,
             x: (params.x * this.cell_size) + this.half_cell_size,
@@ -150,6 +170,7 @@ class World {
 
     createWall (params = {}) {
         new Wall({
+            ...params,
             layer: GOM.front,
             x: params.x * this.cell_size,
             y: params.y * this.cell_size,

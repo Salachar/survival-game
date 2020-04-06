@@ -81,7 +81,7 @@
 /******/
 /******/
 /******/ 	// Load entry module and return exports
-/******/ 	return __webpack_require__(__webpack_require__.s = 6);
+/******/ 	return __webpack_require__(__webpack_require__.s = 12);
 /******/ })
 /************************************************************************/
 /******/ ([
@@ -389,133 +389,11 @@ module.exports = new GOM();
 
 /***/ }),
 /* 1 */
-/***/ (function(module, exports) {
-
-class CONFIG {
-    constructor () {
-        this.__props = {
-
-        };
-    }
-}
-
-module.exports = new CONFIG();
-
-
-/***/ }),
-/* 2 */
-/***/ (function(module, exports) {
-
-const Helpers = {
-	uuid: function () {
-		return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-			var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
-			return v.toString(16);
-		});
-	},
-
-	rgba: function (r,g,b,a) {
-		var a = (a) ? a : 1;
-		return "rgba(" + r + "," + g + "," + b + "," + a + ")"
-	},
-
-	sqr: function (value) {
-		return value * value;
-	},
-
-	getDistance: function (p1, p2, no_sqrt) {
-		let dist = Helpers.sqr(p1.x - p2.x) + Helpers.sqr(p1.y - p2.y);
-		if (no_sqrt) return dist;
-		return Math.sqrt(dist);
-	},
-
-	getRandomArbitrary: function (min, max){
-		return Math.random() * (max - min) + min;
-	},
-
-	getRandomInt: function (min, max) {
-		return Math.floor(Math.random() * (max - min + 1)) + min;
-	},
-
-	returnRandom: function (numbers) {
-		var length = numbers.length;
-		var index = getRandomInt(0, length-1);
-		return numbers[index];
-	},
-
-	percentage: function (percent) {
-		return (getRandomInt(1,100) >= percent);
-	},
-
-	getMouseCoords: function (event, canvas) {
-		var totalOffsetX = 0;
-		var totalOffsetY = 0;
-		var canvasX = 0;
-		var canvasY = 0;
-		var currentElement = canvas;
-
-		totalOffsetX += currentElement.offsetLeft;
-		totalOffsetY += currentElement.offsetTop;
-
-		while(currentElement = currentElement.offsetParent){
-			totalOffsetX += currentElement.offsetLeft;
-			totalOffsetY += currentElement.offsetTop;
-		}
-
-		canvasX = event.pageX - totalOffsetX;
-		canvasY = event.pageY - totalOffsetY;
-
-		return {
-			x : canvasX,
-			y : canvasY
-		};
-	},
-
-    createElement: function (type, classes, opts) {
-        opts = opts || {};
-        let node = document.createElement(type);
-        let classes_split = classes.split(' ');
-        for (let i = 0; i < classes_split.length; ++i) {
-            node.classList.add(classes_split[i]);
-        }
-        if (opts.attributes) {
-            for (let attr in opts.attributes) {
-                if (opts.attributes[attr]) {
-                    node.setAttribute(attr, opts.attributes[attr]);
-                }
-            }
-        }
-        if (opts.dataset) {
-            for (let data in opts.dataset) {
-                if (opts.dataset[data]) {
-                    node.dataset[data] = opts.dataset[data];
-                }
-            }
-        }
-        if (opts.events) {
-            for (let event in opts.events) {
-                node.addEventListener(event, opts.events[event]);
-            }
-        }
-        if (opts.html) {
-            node.innerHTML = opts.html;
-        }
-        if (opts.addTo) {
-            opts.addTo.appendChild(node);
-        }
-        return node;
-    }
-};
-module.exports = Helpers;
-
-
-/***/ }),
-/* 3 */
 /***/ (function(module, exports, __webpack_require__) {
 
 const GOM = __webpack_require__(0);
 
-const Helpers = __webpack_require__(2);
+const Helpers = __webpack_require__(3);
 const getMouseCoords = Helpers.getMouseCoords;
 
 // var SPACE_BAR = 32;
@@ -653,117 +531,12 @@ module.exports = new GIM();
 
 
 /***/ }),
-/* 4 */
-/***/ (function(module, exports, __webpack_require__) {
-
-const GOM = __webpack_require__(0);
-const GOB = __webpack_require__(5);
-
-class Projectile extends GOB {
-	constructor (opts = {}) {
-		super(opts);
-
-		this.type = "projectile";
-
-		this.aim_point = {
-			x: opts.aim_x,
-			y: opts.aim_y,
-		};
-
-		this.z = 1000000;
-
-		this.__props.velX = (opts.velX !== null) ? opts.velX : (-1 + (Math.random() * 2));
-		this.__props.velY = (opts.velY !== null) ? opts.velY : (-1 + (Math.random() * 2));
-
-		this.width = 2;
-		this.height = 2;
-
-		this.resolved = false;
-
-		return this;
-	}
-
-	get velX () {
-		return this.__props.velX;
-	}
-
-	set velX (new_velX) {
-		this.__props.velX = new_velX;
-	}
-
-	get velY () {
-		return this.__props.velY;
-	}
-
-	set velY (new_velY) {
-		this.__props.velY = new_velY;
-	}
-
-	checkBounds () {
-		const x_bound = this.layer.canvas.width;
-		const y_bound = this.layer.canvas.height;
-		if (this.x > x_bound || this.x < 0 || this.y > y_bound || this.y < 0) {
-			this.shutdown();
-		}
-	}
-
-	update () {
-		if (this.resolved) return;
-
-		let closest = null;
-		GOM.checkCollisions({
-			obj: this,
-			onCollision: (collision_info, collision_obj) => {
-				if (Array.isArray(collision_info)) {
-					for (let i = 0; i < collision_info.length; ++i) {
-						if (!closest || closest.t1 > collision_info[i].t1) {
-							closest = collision_info[i];
-						}
-					}
-				}
-			}
-		});
-
-		if (closest) {
-			this.closest_collision = closest;
-		}
-
-		this.resolved = true;
-		setTimeout(() => {
-			this.shutdown();
-		}, 10);
-	}
-
-	draw (opts = {}) {
-		if (this.closest_collision) {
-			this.context.save();
-				this.context.beginPath();
-				this.context.lineWidth = 1;
-				this.context.moveTo(
-					this.x - GOM.camera_offset.x,
-					this.y - GOM.camera_offset.y,
-				);
-				this.context.lineTo(
-					this.closest_collision.x - GOM.camera_offset.x,
-					this.closest_collision.y - GOM.camera_offset.y,
-				);
-				this.context.strokeStyle = "#FFFFFF";
-				this.context.stroke();
-			this.context.restore();
-		}
-	}
-}
-
-module.exports = Projectile;
-
-
-/***/ }),
-/* 5 */
+/* 2 */
 /***/ (function(module, exports, __webpack_require__) {
 
 const GOM = __webpack_require__(0);
 
-const Helpers = __webpack_require__(2);
+const Helpers = __webpack_require__(3);
 const uuid = Helpers.uuid;
 
 class GOB {
@@ -882,169 +655,224 @@ module.exports = GOB;
 
 
 /***/ }),
-/* 6 */
-/***/ (function(module, exports, __webpack_require__) {
+/* 3 */
+/***/ (function(module, exports) {
 
-const GOM = __webpack_require__(0);
-const GIM = __webpack_require__(3);
-
-const Menu = __webpack_require__(7);
-
-const GI = __webpack_require__(8);
-const CONFIG = __webpack_require__(1);
-
-const Player = __webpack_require__(9);
-const Wall = __webpack_require__(10);
-
-const World = __webpack_require__(12);
-
-const APP = {};
-window.APP = APP;
-
-class Game {
-	constructor () {
-		this.world = null;
-
-		this.initialize();
-		this.start();
-	}
-
-	initialize () {
-		GOM.shutdownAll();
-		GOM.clearAllContexts();
-		GIM.register(GI);
-	}
-
-	start () {
-		this.world = new World();
-
-		// this.spawnPlayer();
-		// this.createDebugWalls();
-	}
-
-	spawnPlayer () {
-		new Player({
-			layer: GOM.front,
-			x: 100,
-			y: 100,
+const Helpers = {
+	uuid: function () {
+		return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+			var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+			return v.toString(16);
 		});
+	},
+
+	rgba: function (r,g,b,a) {
+		var a = (a) ? a : 1;
+		return "rgba(" + r + "," + g + "," + b + "," + a + ")"
+	},
+
+	sqr: function (value) {
+		return value * value;
+	},
+
+	getDistance: function (p1, p2, no_sqrt) {
+		let dist = Helpers.sqr(p1.x - p2.x) + Helpers.sqr(p1.y - p2.y);
+		if (no_sqrt) return dist;
+		return Math.sqrt(dist);
+	},
+
+	getRandomArbitrary: function (min, max){
+		return Math.random() * (max - min) + min;
+	},
+
+	getRandomInt: function (min, max) {
+		return Math.floor(Math.random() * (max - min + 1)) + min;
+	},
+
+	returnRandom: function (numbers) {
+		var length = numbers.length;
+		var index = getRandomInt(0, length-1);
+		return numbers[index];
+	},
+
+	percentage: function (percent) {
+		return (getRandomInt(1,100) >= percent);
+	},
+
+	getMouseCoords: function (event, canvas) {
+		var totalOffsetX = 0;
+		var totalOffsetY = 0;
+		var canvasX = 0;
+		var canvasY = 0;
+		var currentElement = canvas;
+
+		totalOffsetX += currentElement.offsetLeft;
+		totalOffsetY += currentElement.offsetTop;
+
+		while(currentElement = currentElement.offsetParent){
+			totalOffsetX += currentElement.offsetLeft;
+			totalOffsetY += currentElement.offsetTop;
+		}
+
+		canvasX = event.pageX - totalOffsetX;
+		canvasY = event.pageY - totalOffsetY;
+
+		return {
+			x : canvasX,
+			y : canvasY
+		};
+	},
+
+    createElement: function (type, classes, opts) {
+        opts = opts || {};
+        let node = document.createElement(type);
+        let classes_split = classes.split(' ');
+        for (let i = 0; i < classes_split.length; ++i) {
+            node.classList.add(classes_split[i]);
+        }
+        if (opts.attributes) {
+            for (let attr in opts.attributes) {
+                if (opts.attributes[attr]) {
+                    node.setAttribute(attr, opts.attributes[attr]);
+                }
+            }
+        }
+        if (opts.dataset) {
+            for (let data in opts.dataset) {
+                if (opts.dataset[data]) {
+                    node.dataset[data] = opts.dataset[data];
+                }
+            }
+        }
+        if (opts.events) {
+            for (let event in opts.events) {
+                node.addEventListener(event, opts.events[event]);
+            }
+        }
+        if (opts.html) {
+            node.innerHTML = opts.html;
+        }
+        if (opts.addTo) {
+            opts.addTo.appendChild(node);
+        }
+        return node;
+    }
+};
+module.exports = Helpers;
+
+
+/***/ }),
+/* 4 */
+/***/ (function(module, exports, __webpack_require__) {
+
+const GOM = __webpack_require__(0);
+const GOB = __webpack_require__(2);
+
+class Projectile extends GOB {
+	constructor (opts = {}) {
+		super(opts);
+
+		this.type = "projectile";
+
+		this.aim_point = {
+			x: opts.aim_x,
+			y: opts.aim_y,
+		};
+
+		this.z = 1000000;
+
+		this.__props.velX = (opts.velX !== null) ? opts.velX : (-1 + (Math.random() * 2));
+		this.__props.velY = (opts.velY !== null) ? opts.velY : (-1 + (Math.random() * 2));
+
+		this.width = 2;
+		this.height = 2;
+
+		this.resolved = false;
+
+		return this;
 	}
 
-	createDebugWalls () {
-		let walls = [
-			[0, 0, window.innerWidth, 20],
-			[window.innerWidth - 20, 0, 20, window.innerHeight],
-			[0, window.innerHeight - 20, window.innerWidth, 20],
-			[0, 0, 20, window.innerHeight],
-			[50, 600, 400, 30],
-			[200, 100, 500, 50],
-			[800, 100, 20, 600],
-		];
-		walls.forEach((wall) => {
-			new Wall({
-				layer: GOM.middle,
-				x: wall[0],
-				y: wall[1],
-				width: wall[2],
-				height: wall[3],
-			});
+	get velX () {
+		return this.__props.velX;
+	}
+
+	set velX (new_velX) {
+		this.__props.velX = new_velX;
+	}
+
+	get velY () {
+		return this.__props.velY;
+	}
+
+	set velY (new_velY) {
+		this.__props.velY = new_velY;
+	}
+
+	checkBounds () {
+		const x_bound = this.layer.canvas.width;
+		const y_bound = this.layer.canvas.height;
+		if (this.x > x_bound || this.x < 0 || this.y > y_bound || this.y < 0) {
+			this.shutdown();
+		}
+	}
+
+	update () {
+		if (this.resolved) return;
+
+		let closest = null;
+		GOM.checkCollisions({
+			obj: this,
+			onCollision: (collision_info, collision_obj) => {
+				if (Array.isArray(collision_info)) {
+					for (let i = 0; i < collision_info.length; ++i) {
+						if (!closest || closest.t1 > collision_info[i].t1) {
+							closest = collision_info[i];
+						}
+					}
+				}
+			}
 		});
+
+		if (closest) {
+			this.closest_collision = closest;
+		}
+
+		this.resolved = true;
+		setTimeout(() => {
+			this.shutdown();
+		}, 10);
+	}
+
+	draw (opts = {}) {
+		if (this.closest_collision) {
+			this.context.save();
+				this.context.beginPath();
+				this.context.lineWidth = 1;
+				this.context.moveTo(
+					this.x - GOM.camera_offset.x,
+					this.y - GOM.camera_offset.y,
+				);
+				this.context.lineTo(
+					this.closest_collision.x - GOM.camera_offset.x,
+					this.closest_collision.y - GOM.camera_offset.y,
+				);
+				this.context.strokeStyle = "#FFFFFF";
+				this.context.stroke();
+			this.context.restore();
+		}
 	}
 }
 
-window.onload = () => {
-    // APP is only used for debugging purposes for easy inspector access
-    APP.Game = new Game();
-	APP.GOM = GOM;
-	APP.GIM = GIM;
-}
-
-window.onresize = () => {
-	GOM.resize();
-}
-
-/*
-TODO:
-    Fix up collision function chain
-    make it so walls dont have to be on the outside
-     and the shoots just go some distance
-        Ill want to be able to kill offscreen enemies
-
-
-
-
-If the player is more than half screen away
-
-
-Get how far away they are from the center
-and offset everything else that much
-*/
+module.exports = Projectile;
 
 
 /***/ }),
-/* 7 */
+/* 5 */
 /***/ (function(module, exports, __webpack_require__) {
 
 const GOM = __webpack_require__(0);
-const CONFIG = __webpack_require__(1);
-
-class Menu {
-    constructor () {
-        this.setEvents();
-    }
-
-    setEvents () {
-
-    }
-}
-
-module.exports = new Menu();
-
-
-/***/ }),
-/* 8 */
-/***/ (function(module, exports, __webpack_require__) {
-
-const GOM = __webpack_require__(0);
-const GIM = __webpack_require__(3);
-const CONFIG = __webpack_require__(1);
-
-const Projectile = __webpack_require__(4);
-
-const { getRandomInt } = __webpack_require__(2);
-
-class GI {
-    constructor () {
-
-    }
-
-    mClick (mouse) {
-
-    }
-
-    mUp (mouse) {
-
-    }
-
-    mDown (mouse) {
-
-    }
-
-    mLeave (mouse) {
-
-    }
-}
-
-module.exports = new GI();
-
-
-/***/ }),
-/* 9 */
-/***/ (function(module, exports, __webpack_require__) {
-
-const GOM = __webpack_require__(0);
-const GIM = __webpack_require__(3);
-const GOB = __webpack_require__(5);
+const GIM = __webpack_require__(1);
+const GOB = __webpack_require__(2);
 
 const Projectile = __webpack_require__(4);
 
@@ -1227,18 +1055,29 @@ module.exports = Player;
 
 
 /***/ }),
-/* 10 */
+/* 6 */
 /***/ (function(module, exports, __webpack_require__) {
 
 const GOM = __webpack_require__(0);
-const GIM = __webpack_require__(3);
-const GOB = __webpack_require__(5);
+const GIM = __webpack_require__(1);
+const GOB = __webpack_require__(2);
 
-const { getIntersection } = __webpack_require__(11);
+const { getIntersection, degreesToRadians } = __webpack_require__(16);
+
+const WALL_IMAGES = {
+    none: __webpack_require__(7),
+    one: __webpack_require__(8),
+    two: __webpack_require__(9),
+    two_straight: __webpack_require__(18),
+    three: __webpack_require__(10),
+    four: __webpack_require__(11),
+}
 
 class Wall extends GOB {
 	constructor (opts = {}) {
         super(opts);
+
+        console.log(opts);
 
         this.type = "wall";
         this.collidable = true;
@@ -1248,6 +1087,11 @@ class Wall extends GOB {
 
         this.collision_points = [];
 
+        this.img = new Image();
+        this.image_data = this.determineImage(opts.neighbors);
+        this.image_data.rotation = degreesToRadians(this.image_data.rotation);
+        this.img.src = WALL_IMAGES[this.image_data.openings];
+
         // We'll want the center of the player and don't want to
         // calculate this all the time
         this.half_width = this.width / 2;
@@ -1256,6 +1100,76 @@ class Wall extends GOB {
         this.segments = this.generateSegments();
 
 		return this;
+    }
+
+    determineImage (neighbors = {}) {
+        // const { north, south, east, west } = neighbors;
+        const north = neighbors.north === 'WALL';
+        const south = neighbors.south === 'WALL';
+        const east = neighbors.east === 'WALL';
+        const west = neighbors.west === 'WALL';
+
+        let openings = 0;
+
+        if (north) openings += 1;
+        if (south) openings += 1;
+        if (east) openings += 1;
+        if (west) openings += 1;
+
+        // 0 and 4 can be returned right away, they are the same
+        // not matter the rotation
+        if (openings === 0) return {
+            openings: 'none',
+            rotation: 0
+        };
+
+        if (openings === 4) return {
+            openings: 'four',
+            rotation: 0
+        };
+
+        // For the other possibilities, we need to know how to rotate
+        // the image to line up the openings
+        // 1 Opening: default faces east
+        // 2 Openings: default faces north west, tube is west/east
+        // 3 Openings: default is north west east
+        if (openings === 1) {
+            let image_data = {
+                openings: 'one',
+                rotation: 0
+            };
+            if (north) image_data.rotation = 270;
+            if (west) image_data.rotation = 180;
+            if (south) image_data.rotation = 90;
+            return image_data;
+        }
+
+        if (openings === 2) {
+            let image_data = {
+                openings: 'two',
+                rotation: 0
+            };
+            if (north && east) image_data.rotation = 90;
+            if (east && south) image_data.rotation = 180;
+            if (south && west) image_data.rotation = 270;
+            if (north && south) {
+                image_data.openings = 'two_straight';
+                image_data.rotation = 90;
+            }
+            if (east && west) image_data.openings = 'two_straight';
+            return image_data;
+        }
+
+        if (openings === 3) { // default is north west east
+            let image_data = {
+                openings: 'three',
+                rotation: 0
+            };
+            if (!west) image_data.rotation = 90;
+            if (!north) image_data.rotation = 180;
+            if (!east) image_data.rotation = 270;
+            return image_data;
+        }
     }
 
     generateSegments () {
@@ -1416,28 +1330,57 @@ class Wall extends GOB {
 
 	draw (opts = {}) {
 		this.context.save();
-			this.context.beginPath();
-			this.context.rect(
+			// this.context.beginPath();
+			// this.context.rect(
+            //     this.x - GOM.camera_offset.x,
+            //     this.y - GOM.camera_offset.y,
+            //     this.width,
+            //     this.height
+            // );
+			// this.context.fillStyle = '#FFFFFF';
+            // this.context.fill();
+
+            const center = {
+                x: this.x - GOM.camera_offset.x + (this.width / 2),
+                y: this.y - GOM.camera_offset.y + (this.height / 2),
+            };
+            this.context.translate(center.x, center.y);
+            this.context.rotate(this.image_data.rotation);
+            this.context.translate(-center.x, -center.y);
+
+            this.context.drawImage(
+                this.img,
                 this.x - GOM.camera_offset.x,
-                this.y - GOM.camera_offset.y,
-                this.width,
-                this.height
+                this.y - GOM.camera_offset.y
             );
-			this.context.fillStyle = '#FFFFFF';
-			this.context.fill();
-            for (var i = 0; i < this.collision_points.length; ++i) {
-                const p = this.collision_points[i];
-                this.context.beginPath();
-                this.context.rect(
-                    p.x - GOM.camera_offset.x - 5,
-                    p.y - GOM.camera_offset.y - 5,
-                    10,
-                    10
-                );
-                this.context.fillStyle = '#FF0000';
-                this.context.fill();
-            }
+
+
+
+            // for (var i = 0; i < this.collision_points.length; ++i) {
+            //     const p = this.collision_points[i];
+            //     this.context.beginPath();
+            //     this.context.rect(
+            //         p.x - GOM.camera_offset.x - 5,
+            //         p.y - GOM.camera_offset.y - 5,
+            //         10,
+            //         10
+            //     );
+            //     this.context.fillStyle = '#FF0000';
+            //     this.context.fill();
+            // }
         this.context.restore();
+        for (var i = 0; i < this.collision_points.length; ++i) {
+            const p = this.collision_points[i];
+            this.context.beginPath();
+            this.context.rect(
+                p.x - GOM.camera_offset.x - 5,
+                p.y - GOM.camera_offset.y - 5,
+                10,
+                10
+            );
+            this.context.fillStyle = '#FF0000';
+            this.context.fill();
+        }
 	}
 }
 
@@ -1445,13 +1388,217 @@ module.exports = Wall;
 
 
 /***/ }),
+/* 7 */
+/***/ (function(module, exports, __webpack_require__) {
+
+module.exports = __webpack_require__.p + "src/js/game/objects/terrain/wall/wall_open_none.png";
+
+/***/ }),
+/* 8 */
+/***/ (function(module, exports, __webpack_require__) {
+
+module.exports = __webpack_require__.p + "src/js/game/objects/terrain/wall/wall_open_one.png";
+
+/***/ }),
+/* 9 */
+/***/ (function(module, exports, __webpack_require__) {
+
+module.exports = __webpack_require__.p + "src/js/game/objects/terrain/wall/wall_open_two.png";
+
+/***/ }),
+/* 10 */
+/***/ (function(module, exports, __webpack_require__) {
+
+module.exports = __webpack_require__.p + "src/js/game/objects/terrain/wall/wall_open_three.png";
+
+/***/ }),
 /* 11 */
+/***/ (function(module, exports, __webpack_require__) {
+
+module.exports = __webpack_require__.p + "src/js/game/objects/terrain/wall/wall_open_four.png";
+
+/***/ }),
+/* 12 */
+/***/ (function(module, exports, __webpack_require__) {
+
+const GOM = __webpack_require__(0);
+const GIM = __webpack_require__(1);
+
+const Menu = __webpack_require__(13);
+
+const GI = __webpack_require__(14);
+const CONFIG = __webpack_require__(15);
+
+const Player = __webpack_require__(5);
+const Wall = __webpack_require__(6);
+
+const World = __webpack_require__(17);
+
+const APP = {};
+window.APP = APP;
+
+class Game {
+	constructor () {
+		this.world = null;
+
+		this.initialize();
+		this.start();
+	}
+
+	initialize () {
+		GOM.shutdownAll();
+		GOM.clearAllContexts();
+		GIM.register(GI);
+	}
+
+	start () {
+		this.world = new World();
+
+		// this.spawnPlayer();
+		// this.createDebugWalls();
+	}
+
+	spawnPlayer () {
+		new Player({
+			layer: GOM.front,
+			x: 100,
+			y: 100,
+		});
+	}
+
+	createDebugWalls () {
+		let walls = [
+			[0, 0, window.innerWidth, 20],
+			[window.innerWidth - 20, 0, 20, window.innerHeight],
+			[0, window.innerHeight - 20, window.innerWidth, 20],
+			[0, 0, 20, window.innerHeight],
+			[50, 600, 400, 30],
+			[200, 100, 500, 50],
+			[800, 100, 20, 600],
+		];
+		walls.forEach((wall) => {
+			new Wall({
+				layer: GOM.middle,
+				x: wall[0],
+				y: wall[1],
+				width: wall[2],
+				height: wall[3],
+			});
+		});
+	}
+}
+
+window.onload = () => {
+    // APP is only used for debugging purposes for easy inspector access
+    APP.Game = new Game();
+	APP.GOM = GOM;
+	APP.GIM = GIM;
+}
+
+window.onresize = () => {
+	GOM.resize();
+}
+
+/*
+TODO:
+    Fix up collision function chain
+    make it so walls dont have to be on the outside
+     and the shoots just go some distance
+        Ill want to be able to kill offscreen enemies
+
+
+
+
+If the player is more than half screen away
+
+
+Get how far away they are from the center
+and offset everything else that much
+*/
+
+
+/***/ }),
+/* 13 */
+/***/ (function(module, exports, __webpack_require__) {
+
+const GOM = __webpack_require__(0);
+
+class Menu {
+    constructor () {
+        this.setEvents();
+    }
+
+    setEvents () {
+
+    }
+}
+
+module.exports = new Menu();
+
+
+/***/ }),
+/* 14 */
+/***/ (function(module, exports, __webpack_require__) {
+
+const GOM = __webpack_require__(0);
+const GIM = __webpack_require__(1);
+
+const Projectile = __webpack_require__(4);
+
+const { getRandomInt } = __webpack_require__(3);
+
+class GI {
+    constructor () {
+
+    }
+
+    mClick (mouse) {
+
+    }
+
+    mUp (mouse) {
+
+    }
+
+    mDown (mouse) {
+
+    }
+
+    mLeave (mouse) {
+
+    }
+}
+
+module.exports = new GI();
+
+
+/***/ }),
+/* 15 */
+/***/ (function(module, exports) {
+
+class CONFIG {
+    constructor () {
+        this.__props = {
+
+        };
+    }
+}
+
+module.exports = new CONFIG();
+
+
+/***/ }),
+/* 16 */
 /***/ (function(module, exports) {
 
 const Helpers = {
     copy: function (object) {
         if (!object) return null;
         return JSON.parse(JSON.stringify(object));
+    },
+
+    degreesToRadians (degrees) {
+        return degrees * (Math.PI / 180);
     },
 
     pointMatch: function (p1, p2, tolerance) {
@@ -1671,15 +1818,15 @@ module.exports = Helpers;
 
 
 /***/ }),
-/* 12 */
+/* 17 */
 /***/ (function(module, exports, __webpack_require__) {
 
 const GOM = __webpack_require__(0);
-const GIM = __webpack_require__(3);
-const GOB = __webpack_require__(5);
+const GIM = __webpack_require__(1);
+const GOB = __webpack_require__(2);
 
-const Player = __webpack_require__(9);
-const Wall = __webpack_require__(10);
+const Player = __webpack_require__(5);
+const Wall = __webpack_require__(6);
 
 /*
 What kind of environment do I want.
@@ -1698,46 +1845,55 @@ const WORLD_MAP_LEGEND = {
     ' ': 'EMPTY',
     'R': 'ROCK',
     '@': 'PLAYER_SPAWN',
-    'W': 'WALL_PERMANENT', // permanent wall is permanent rock
+    'W': 'WALL', // permanent wall is permanent rock
 };
 
 const WORLD_MAP = [
-'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
-'W                                      W',
-'W  @                   R               W',
-'W                     RR               W',
-'W                   RRRRRR             W',
-'W                      RR              W',
-'W                    R                 W',
-'W                                      W',
-'W     RRRR                     RR      W',
-'W                                      W',
-'W                                      W',
-'W                                      W',
-'W                                      W',
-'W                                      W',
-'W                                      W',
-'W                                      W',
-'W                                      W',
-'W                                      W',
-'W                                      W',
-'W                                      W',
-'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'W                                                WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'W  @                   W                         WWWWWWW                WWWWWWWW',
+'W                     WW                                   WWWWWW       WWWWWWWW',
+'W                   WWWWWWW                       WWWWWWWWWWWWWWWWWW   WWWWWWWWWW',
+'W                      WW                        WWWWWWWWWWWWWWWWW        WWWWWW',
+'W                    W                           WWWWWWWWWWWWWWWWWWWWW     WWWWW',
+'W                                                WWWWWWWWWWWWWWWWWWWWWWWWW WWWWW',
+'W     WWWW                     WW                WWWWWWWWWWWWWWWWWWWWWWWWW WWWWW',
+'W                                                WWWWWWWWWWWWWWWWWWWWWWWWW WWWWW',
+'W                                                                              W',
+'W                                                                              W',
+'W                                                                              W',
+'W                                                                              W',
+'W                                                                              W',
+'W                                                                              W',
+'W                                                                              W',
+'W                                                                              W',
+'W                                                                              W',
+'W                                                                              W',
+'W                                                                              W',
+'W                                                                              W',
+'W                                                                              W',
+'W                                                                              W',
+'W                                                                              W',
+'W                                                                              W',
+'W                                                                              W',
+'W                                                                              W',
+'W                                                                              W',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
 ];
 // const WORLD_MAP = [
-// '        WW                              ',
+// '                                        ',
 // '         W                              ',
-// '   @                                    ',
-// '        WW                              ',
-// '        WW                              ',
+// '   @        W                WWWW       ',
+// '         WW W                W  W       ',
+// '                             W  W       ',
+// '    W    W          W        WWWW       ',
+// '   WWW  WW   WWW    WW                  ',
+// '         W    W     W                   ',
 // '                                        ',
 // '                                        ',
-// '                                        ',
-// '                                        ',
-// '                                        ',
-// '                                        ',
-// '                                        ',
-// '                                        ',
+// '     W        WW                        ',
+// '    WWW      WWWW                       ',
+// '     W        WW                        ',
 // '                                        ',
 // '                                        ',
 // '                                        ',
@@ -1751,7 +1907,7 @@ const WORLD_MAP = [
 // '                                        ',
 // '                                        ',
 // '   @                                    ',
-// '        W                               ',
+// '        WW                              ',
 // '                                        ',
 // '                                        ',
 // '                                        ',
@@ -1782,20 +1938,30 @@ class World {
             height: WORLD_MAP.length * this.cell_size,
         };
 
-        this.generateWorld();
+        this.world = this.parseWorld(WORLD_MAP);
+        this.generateWorld(this.world);
     }
 
-    generateWorld () {
-        WORLD_MAP.forEach((row, index_y) => {
-            const row_split = row.split('');
-            row_split.forEach((tile, index_x) => {
+    parseWorld (map) {
+        return map.map((map_row) => {
+            return map_row.split('');
+        });
+    }
+
+    generateWorld (world) {
+        world.forEach((row, y) => {
+            row.forEach((tile, x) => {
                 const type = WORLD_MAP_LEGEND[tile];
-
                 const objectParams = {
-                    x: index_x,
-                    y: index_y,
+                    x,
+                    y,
+                    neighbors: {
+                        north: WORLD_MAP_LEGEND[(world[y - 1] || [])[x] || null],
+                        south: WORLD_MAP_LEGEND[(world[y + 1] || [])[x] || null],
+                        east: WORLD_MAP_LEGEND[(world[y] || [])[x + 1] || null],
+                        west: WORLD_MAP_LEGEND[(world[y] || [])[x - 1] || null]
+                    }
                 };
-
                 switch (type) {
                     case 'PLAYER_SPAWN':
                         this.spawnPlayer(objectParams);
@@ -1803,7 +1969,7 @@ class World {
                     case 'ROCK':
                         this.createWall(objectParams);
                         break;
-                    case 'WALL_PERMANENT':
+                    case 'WALL':
                         objectParams.permanent = true;
                         this.createWall(objectParams);
                         break;
@@ -1817,6 +1983,7 @@ class World {
     spawnPlayer (params = {}) {
         // We want the player to spawn in the middle of the cell
         new Player({
+            ...params,
             camera_follow: true,
             layer: GOM.front,
             x: (params.x * this.cell_size) + this.half_cell_size,
@@ -1826,6 +1993,7 @@ class World {
 
     createWall (params = {}) {
         new Wall({
+            ...params,
             layer: GOM.front,
             x: params.x * this.cell_size,
             y: params.y * this.cell_size,
@@ -1836,6 +2004,12 @@ class World {
 }
 
 module.exports = World;
+
+/***/ }),
+/* 18 */
+/***/ (function(module, exports, __webpack_require__) {
+
+module.exports = __webpack_require__.p + "src/js/game/objects/terrain/wall/wall_open_two_straight.png";
 
 /***/ })
 /******/ ]);

@@ -1,5 +1,5 @@
-const GOM = require('../../core/game-object-manager');
-const GOB = require('../../core/game-object-base');
+const GOM = require('core/game-object-manager');
+const GOB = require('core/game-object-base');
 
 class Projectile extends GOB {
 	constructor (opts = {}) {

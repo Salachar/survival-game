@@ -1,5 +1,4 @@
-const GOM = require('../../core/game-object-manager');
-const CONFIG = require('../game-config');
+const GOM = require('core/game-object-manager');
 
 class Menu {
     constructor () {

@@ -1,6 +1,6 @@
-const GOM = require('../../core/game-object-manager');
-const GIM = require('../../core/game-input-manager');
-const GOB = require('../../core/game-object-base');
+const GOM = require('core/game-object-manager');
+const GIM = require('core/game-input-manager');
+const GOB = require('core/game-object-base');
 
 const Projectile = require('./projectile');
 
