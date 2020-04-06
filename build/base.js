@@ -1114,12 +1114,12 @@ class Wall extends GOB {
 		return this;
     }
 
-    determineImage (neighbors = {}) {
+    determineImage (neighbors = {}) {2
         // const { north, south, east, west } = neighbors;
-        const north = neighbors.north === 'WALL';
-        const south = neighbors.south === 'WALL';
-        const east = neighbors.east === 'WALL';
-        const west = neighbors.west === 'WALL';
+        const north = neighbors.north === 'WALL' || neighbors.north === null;
+        const south = neighbors.south === 'WALL' || neighbors.south === null;
+        const east = neighbors.east === 'WALL' || neighbors.east === null;
+        const west = neighbors.west === 'WALL' || neighbors.west === null;
 
         let openings = 0;
 
@@ -1242,6 +1242,8 @@ class Wall extends GOB {
     checkPlayerCollision (obj) {
         if (obj.velY === 0 && obj.velX === 0) return;
 
+        if (Math.abs(obj.x - this.x) > 100 || Math.abs(obj.y - this.y) > 100) return;
+
         let next_obj_x = obj.x + obj.velX;
         let next_obj_y = obj.y + obj.velY;
 
@@ -1340,47 +1342,35 @@ class Wall extends GOB {
 
     }
 
-	draw (opts = {}) {
-		this.context.save();
-			// this.context.beginPath();
-			// this.context.rect(
-            //     this.x - GOM.camera_offset.x,
-            //     this.y - GOM.camera_offset.y,
-            //     this.width,
-            //     this.height
-            // );
-			// this.context.fillStyle = '#FFFFFF';
-            // this.context.fill();
+    drawRect () {
+        this.context.beginPath();
+        this.context.rect(
+            this.x - GOM.camera_offset.x,
+            this.y - GOM.camera_offset.y,
+            this.width,
+            this.height
+        );
+        this.context.fillStyle = '#FFFFFF';
+        this.context.fill();
+    }
 
-            const center = {
-                x: this.x - GOM.camera_offset.x + (this.width / 2),
-                y: this.y - GOM.camera_offset.y + (this.height / 2),
-            };
-            this.context.translate(center.x, center.y);
-            this.context.rotate(this.image_data.rotation);
-            this.context.translate(-center.x, -center.y);
+    drawImage () {
+        const center = {
+            x: this.x - GOM.camera_offset.x + (this.width / 2),
+            y: this.y - GOM.camera_offset.y + (this.height / 2),
+        };
+        this.context.translate(center.x, center.y);
+        this.context.rotate(this.image_data.rotation);
+        this.context.translate(-center.x, -center.y);
 
-            this.context.drawImage(
-                this.img,
-                this.x - GOM.camera_offset.x,
-                this.y - GOM.camera_offset.y
-            );
+        this.context.drawImage(
+            this.img,
+            this.x - GOM.camera_offset.x,
+            this.y - GOM.camera_offset.y
+        );
+    }
 
-
-
-            // for (var i = 0; i < this.collision_points.length; ++i) {
-            //     const p = this.collision_points[i];
-            //     this.context.beginPath();
-            //     this.context.rect(
-            //         p.x - GOM.camera_offset.x - 5,
-            //         p.y - GOM.camera_offset.y - 5,
-            //         10,
-            //         10
-            //     );
-            //     this.context.fillStyle = '#FF0000';
-            //     this.context.fill();
-            // }
-        this.context.restore();
+    drawShotPoints () {
         for (var i = 0; i < this.collision_points.length; ++i) {
             const p = this.collision_points[i];
             this.context.beginPath();
@@ -1393,6 +1383,14 @@ class Wall extends GOB {
             this.context.fillStyle = '#FF0000';
             this.context.fill();
         }
+    }
+
+	draw (opts = {}) {
+		this.context.save();
+            this.drawRect();
+            // this.drawImage();
+        this.context.restore();
+        this.drawShotPoints();
 	}
 }
 
@@ -1414,6 +1412,9 @@ const CONFIG = __webpack_require__(10);
 const Player = __webpack_require__(5);
 const Wall = __webpack_require__(6);
 
+const REAL_MAP = __webpack_require__(19);
+const DEBUG_MAP = __webpack_require__(20);
+
 const World = __webpack_require__(18);
 
 const APP = {};
@@ -1434,39 +1435,7 @@ class Game {
 	}
 
 	start () {
-		this.world = new World();
-
-		// this.spawnPlayer();
-		// this.createDebugWalls();
-	}
-
-	spawnPlayer () {
-		new Player({
-			layer: GOM.front,
-			x: 100,
-			y: 100,
-		});
-	}
-
-	createDebugWalls () {
-		let walls = [
-			[0, 0, window.innerWidth, 20],
-			[window.innerWidth - 20, 0, 20, window.innerHeight],
-			[0, window.innerHeight - 20, window.innerWidth, 20],
-			[0, 0, 20, window.innerHeight],
-			[50, 600, 400, 30],
-			[200, 100, 500, 50],
-			[800, 100, 20, 600],
-		];
-		walls.forEach((wall) => {
-			new Wall({
-				layer: GOM.middle,
-				x: wall[0],
-				y: wall[1],
-				width: wall[2],
-				height: wall[3],
-			});
-		});
+		this.world = new World(REAL_MAP);
 	}
 }
 
@@ -1480,23 +1449,6 @@ window.onload = () => {
 window.onresize = () => {
 	GOM.resize();
 }
-
-/*
-TODO:
-    Fix up collision function chain
-    make it so walls dont have to be on the outside
-     and the shoots just go some distance
-        Ill want to be able to kill offscreen enemies
-
-
-
-
-If the player is more than half screen away
-
-
-Get how far away they are from the center
-and offset everything else that much
-*/
 
 
 /***/ }),
@@ -1848,7 +1800,6 @@ const Wall = __webpack_require__(6);
 
 /*
 What kind of environment do I want.
-
     - No tiers, just one flat plane
     - Rivers
     - Lakes
@@ -1866,97 +1817,17 @@ const WORLD_MAP_LEGEND = {
     'W': 'WALL', // permanent wall is permanent rock
 };
 
-const WORLD_MAP = [
-'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
-'W                                                WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
-'W  @                   W                         WWWWWWW                WWWWWWWW',
-'W                     WW                                   WWWWWW       WWWWWWWW',
-'W                   WWWWWWW                       WWWWWWWWWWWWWWWWWW   WWWWWWWWWW',
-'W                      WW                        WWWWWWWWWWWWWWWWW        WWWWWW',
-'W                    W                           WWWWWWWWWWWWWWWWWWWWW     WWWWW',
-'W                                                WWWWWWWWWWWWWWWWWWWWWWWWW WWWWW',
-'W     WWWW                     WW                WWWWWWWWWWWWWWWWWWWWWWWWW WWWWW',
-'W                                                WWWWWWWWWWWWWWWWWWWWWWWWW WWWWW',
-'W                                                                              W',
-'W                                                                              W',
-'W                                                                              W',
-'W                                                                              W',
-'W                                                                              W',
-'W                                                                              W',
-'W                                                                              W',
-'W                                                                              W',
-'W                                                                              W',
-'W                                                                              W',
-'W                                                                              W',
-'W                                                                              W',
-'W                                                                              W',
-'W                                                                              W',
-'W                                                                              W',
-'W                                                                              W',
-'W                                                                              W',
-'W                                                                              W',
-'W                                                                              W',
-'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
-];
-// const WORLD_MAP = [
-// '                                        ',
-// '         W                              ',
-// '   @        W                WWWW       ',
-// '         WW W                W  W       ',
-// '                             W  W       ',
-// '    W    W          W        WWWW       ',
-// '   WWW  WW   WWW    WW                  ',
-// '         W    W     W                   ',
-// '                                        ',
-// '                                        ',
-// '     W        WW                        ',
-// '    WWW      WWWW                       ',
-// '     W        WW                        ',
-// '                                        ',
-// '                                        ',
-// '                                        ',
-// '                                        ',
-// '                                        ',
-// '                                        ',
-// '                                        ',
-// '                                        ',
-// ];
-// const WORLD_MAP = [
-// '                                        ',
-// '                                        ',
-// '   @                                    ',
-// '        WW                              ',
-// '                                        ',
-// '                                        ',
-// '                                        ',
-// '                                        ',
-// '                                        ',
-// '                                        ',
-// '                                        ',
-// '                                        ',
-// '                                        ',
-// '                                        ',
-// '                                        ',
-// '                                        ',
-// '                                        ',
-// '                                        ',
-// '                                        ',
-// '                                        ',
-// '                                        ',
-// ];
-
-
 class World {
-    constructor () {
+    constructor (world_map) {
         this.cell_size = 50;
         this.half_cell_size = this.cell_size / 2;
 
         GOM.world_size = {
-            width: WORLD_MAP[0].length * this.cell_size,
-            height: WORLD_MAP.length * this.cell_size,
+            width: world_map[0].length * this.cell_size,
+            height: world_map.length * this.cell_size,
         };
 
-        this.world = this.parseWorld(WORLD_MAP);
+        this.world = this.parseWorld(world_map);
         this.generateWorld(this.world);
     }
 
@@ -1967,6 +1838,11 @@ class World {
     }
 
     generateWorld (world) {
+        let wall_count = 0;
+
+        console.log('World Width: ' + world[0].length);
+        console.log('World Height: ' + world.length);
+
         world.forEach((row, y) => {
             row.forEach((tile, x) => {
                 const type = WORLD_MAP_LEGEND[tile];
@@ -1974,10 +1850,10 @@ class World {
                     x,
                     y,
                     neighbors: {
-                        north: WORLD_MAP_LEGEND[(world[y - 1] || [])[x] || null],
-                        south: WORLD_MAP_LEGEND[(world[y + 1] || [])[x] || null],
-                        east: WORLD_MAP_LEGEND[(world[y] || [])[x + 1] || null],
-                        west: WORLD_MAP_LEGEND[(world[y] || [])[x - 1] || null]
+                        north: WORLD_MAP_LEGEND[(world[y - 1] || [])[x] || null] || null,
+                        south: WORLD_MAP_LEGEND[(world[y + 1] || [])[x] || null] || null,
+                        east: WORLD_MAP_LEGEND[(world[y] || [])[x + 1] || null] || null,
+                        west: WORLD_MAP_LEGEND[(world[y] || [])[x - 1] || null] || null,
                     }
                 };
                 switch (type) {
@@ -1988,6 +1864,7 @@ class World {
                         this.createWall(objectParams);
                         break;
                     case 'WALL':
+                        wall_count += 1;
                         objectParams.permanent = true;
                         this.createWall(objectParams);
                         break;
@@ -1996,6 +1873,8 @@ class World {
                 }
             });
         });
+
+        console.log('Wall Count: ' + wall_count);
     }
 
     spawnPlayer (params = {}) {
@@ -2022,6 +1901,140 @@ class World {
 }
 
 module.exports = World;
+
+/***/ }),
+/* 19 */
+/***/ (function(module, exports) {
+
+module.exports = [
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'W                WW                              WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'W  @        W          W        WW               WWWWWWW                WWWWWWWW',
+'W          WWW        WW        WW                         WWWWWW       WWWWWWWW',
+'W  W  W     W      WWWWWWW      WW               WWWWWWWWWWWWWWWWWW   WWWWWWWWWW',
+'W                      WW       WW               WWWWWWWWWWWWWWWWW        WWWWWW',
+'W     WWWW           W          WW               WWWWWWWWWWWWWWWWWWWWW     WWWWW',
+'W                                                WWWWWWWWWWWWWWWWWWWWWWWWW WWWWW',
+'W     WWWWW      W  WWW        WW                WWWWWWWWWWWWWWWWWWWWWWWWW WWWWW',
+'W         W      W  W W                          WWWWWWWWWWWWWWWWWWWWWWWWW WWWWW',
+'W         WWWW   W  WWW                                                        W',
+'W         WW     W                                                             W',
+'W          W     W                                                             W',
+'W          WWWWWWW                                                             W',
+'W                                                                              W',
+'W                                                                              W',
+'W                                                                              W',
+'W                                                                              W',
+'W                                                                              W',
+'W                                                                              W',
+'W                                                                              W',
+'W                                                                              W',
+'W                                                                              W',
+'W                                                                              W',
+'W                                                                              W',
+'W                                                                              W',
+'W                                                                              W',
+'W                                                                              W',
+'W                                                                              W',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+];
+
+/***/ }),
+/* 20 */
+/***/ (function(module, exports) {
+
+module.exports = [
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'W                                                WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'W  @        W                  WW                WWWWWWW                WWWWWWWW',
+'W          WWW              WW                         WWWWWW       WWWWWWWW',
+'W  W  W     W      WWWWWWW      WW               WWWWWWWWWWWWWWWWWW   WWWWWWWWWW',
+'W                      WW       WW               WWWWWWWWWWWWWWWWW        WWWWWW',
+'W  W  WWWW           W          WW               WWWWWWWWWWWWWWWWWWWWW     WWWWW',
+'W  W                                             WWWWWWWWWWWWWWWWWWWWWWWWW WWWWW',
+'W  W  WWWWW      W  WWW        WW                WWWWWWWWWWWWWWWWWWWWWWWWW WWWWW',
+'W         W      W  W W                          WWWWWWWWWWWWWWWWWWWWWWWWW WWWWW',
+'W         WWWW   W  WWW                                                        W',
+'W         WW     W                                                             W',
+'W          W     W                                                             W',
+'W          WWWWWWW                                                             W',
+'W                                                                              W',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+];
 
 /***/ })
 /******/ ]);

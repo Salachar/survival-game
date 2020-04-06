@@ -40,12 +40,12 @@ class Wall extends GOB {
 		return this;
     }
 
-    determineImage (neighbors = {}) {
+    determineImage (neighbors = {}) {2
         // const { north, south, east, west } = neighbors;
-        const north = neighbors.north === 'WALL';
-        const south = neighbors.south === 'WALL';
-        const east = neighbors.east === 'WALL';
-        const west = neighbors.west === 'WALL';
+        const north = neighbors.north === 'WALL' || neighbors.north === null;
+        const south = neighbors.south === 'WALL' || neighbors.south === null;
+        const east = neighbors.east === 'WALL' || neighbors.east === null;
+        const west = neighbors.west === 'WALL' || neighbors.west === null;
 
         let openings = 0;
 
@@ -168,6 +168,8 @@ class Wall extends GOB {
     checkPlayerCollision (obj) {
         if (obj.velY === 0 && obj.velX === 0) return;
 
+        if (Math.abs(obj.x - this.x) > 100 || Math.abs(obj.y - this.y) > 100) return;
+
         let next_obj_x = obj.x + obj.velX;
         let next_obj_y = obj.y + obj.velY;
 
@@ -266,47 +268,35 @@ class Wall extends GOB {
 
     }
 
-	draw (opts = {}) {
-		this.context.save();
-			// this.context.beginPath();
-			// this.context.rect(
-            //     this.x - GOM.camera_offset.x,
-            //     this.y - GOM.camera_offset.y,
-            //     this.width,
-            //     this.height
-            // );
-			// this.context.fillStyle = '#FFFFFF';
-            // this.context.fill();
+    drawRect () {
+        this.context.beginPath();
+        this.context.rect(
+            this.x - GOM.camera_offset.x,
+            this.y - GOM.camera_offset.y,
+            this.width,
+            this.height
+        );
+        this.context.fillStyle = '#FFFFFF';
+        this.context.fill();
+    }
 
-            const center = {
-                x: this.x - GOM.camera_offset.x + (this.width / 2),
-                y: this.y - GOM.camera_offset.y + (this.height / 2),
-            };
-            this.context.translate(center.x, center.y);
-            this.context.rotate(this.image_data.rotation);
-            this.context.translate(-center.x, -center.y);
+    drawImage () {
+        const center = {
+            x: this.x - GOM.camera_offset.x + (this.width / 2),
+            y: this.y - GOM.camera_offset.y + (this.height / 2),
+        };
+        this.context.translate(center.x, center.y);
+        this.context.rotate(this.image_data.rotation);
+        this.context.translate(-center.x, -center.y);
 
-            this.context.drawImage(
-                this.img,
-                this.x - GOM.camera_offset.x,
-                this.y - GOM.camera_offset.y
-            );
+        this.context.drawImage(
+            this.img,
+            this.x - GOM.camera_offset.x,
+            this.y - GOM.camera_offset.y
+        );
+    }
 
-
-
-            // for (var i = 0; i < this.collision_points.length; ++i) {
-            //     const p = this.collision_points[i];
-            //     this.context.beginPath();
-            //     this.context.rect(
-            //         p.x - GOM.camera_offset.x - 5,
-            //         p.y - GOM.camera_offset.y - 5,
-            //         10,
-            //         10
-            //     );
-            //     this.context.fillStyle = '#FF0000';
-            //     this.context.fill();
-            // }
-        this.context.restore();
+    drawShotPoints () {
         for (var i = 0; i < this.collision_points.length; ++i) {
             const p = this.collision_points[i];
             this.context.beginPath();
@@ -319,6 +309,14 @@ class Wall extends GOB {
             this.context.fillStyle = '#FF0000';
             this.context.fill();
         }
+    }
+
+	draw (opts = {}) {
+		this.context.save();
+            this.drawRect();
+            // this.drawImage();
+        this.context.restore();
+        this.drawShotPoints();
 	}
 }
 

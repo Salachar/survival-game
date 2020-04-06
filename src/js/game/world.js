@@ -7,7 +7,6 @@ const Wall = require('game/objects/terrain/wall');
 
 /*
 What kind of environment do I want.
-
     - No tiers, just one flat plane
     - Rivers
     - Lakes
@@ -25,97 +24,17 @@ const WORLD_MAP_LEGEND = {
     'W': 'WALL', // permanent wall is permanent rock
 };
 
-const WORLD_MAP = [
-'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
-'W                                                WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
-'W  @                   W                         WWWWWWW                WWWWWWWW',
-'W                     WW                                   WWWWWW       WWWWWWWW',
-'W                   WWWWWWW                       WWWWWWWWWWWWWWWWWW   WWWWWWWWWW',
-'W                      WW                        WWWWWWWWWWWWWWWWW        WWWWWW',
-'W                    W                           WWWWWWWWWWWWWWWWWWWWW     WWWWW',
-'W                                                WWWWWWWWWWWWWWWWWWWWWWWWW WWWWW',
-'W     WWWW                     WW                WWWWWWWWWWWWWWWWWWWWWWWWW WWWWW',
-'W                                                WWWWWWWWWWWWWWWWWWWWWWWWW WWWWW',
-'W                                                                              W',
-'W                                                                              W',
-'W                                                                              W',
-'W                                                                              W',
-'W                                                                              W',
-'W                                                                              W',
-'W                                                                              W',
-'W                                                                              W',
-'W                                                                              W',
-'W                                                                              W',
-'W                                                                              W',
-'W                                                                              W',
-'W                                                                              W',
-'W                                                                              W',
-'W                                                                              W',
-'W                                                                              W',
-'W                                                                              W',
-'W                                                                              W',
-'W                                                                              W',
-'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
-];
-// const WORLD_MAP = [
-// '                                        ',
-// '         W                              ',
-// '   @        W                WWWW       ',
-// '         WW W                W  W       ',
-// '                             W  W       ',
-// '    W    W          W        WWWW       ',
-// '   WWW  WW   WWW    WW                  ',
-// '         W    W     W                   ',
-// '                                        ',
-// '                                        ',
-// '     W        WW                        ',
-// '    WWW      WWWW                       ',
-// '     W        WW                        ',
-// '                                        ',
-// '                                        ',
-// '                                        ',
-// '                                        ',
-// '                                        ',
-// '                                        ',
-// '                                        ',
-// '                                        ',
-// ];
-// const WORLD_MAP = [
-// '                                        ',
-// '                                        ',
-// '   @                                    ',
-// '        WW                              ',
-// '                                        ',
-// '                                        ',
-// '                                        ',
-// '                                        ',
-// '                                        ',
-// '                                        ',
-// '                                        ',
-// '                                        ',
-// '                                        ',
-// '                                        ',
-// '                                        ',
-// '                                        ',
-// '                                        ',
-// '                                        ',
-// '                                        ',
-// '                                        ',
-// '                                        ',
-// ];
-
-
 class World {
-    constructor () {
+    constructor (world_map) {
         this.cell_size = 50;
         this.half_cell_size = this.cell_size / 2;
 
         GOM.world_size = {
-            width: WORLD_MAP[0].length * this.cell_size,
-            height: WORLD_MAP.length * this.cell_size,
+            width: world_map[0].length * this.cell_size,
+            height: world_map.length * this.cell_size,
         };
 
-        this.world = this.parseWorld(WORLD_MAP);
+        this.world = this.parseWorld(world_map);
         this.generateWorld(this.world);
     }
 
@@ -126,6 +45,11 @@ class World {
     }
 
     generateWorld (world) {
+        let wall_count = 0;
+
+        console.log('World Width: ' + world[0].length);
+        console.log('World Height: ' + world.length);
+
         world.forEach((row, y) => {
             row.forEach((tile, x) => {
                 const type = WORLD_MAP_LEGEND[tile];
@@ -133,10 +57,10 @@ class World {
                     x,
                     y,
                     neighbors: {
-                        north: WORLD_MAP_LEGEND[(world[y - 1] || [])[x] || null],
-                        south: WORLD_MAP_LEGEND[(world[y + 1] || [])[x] || null],
-                        east: WORLD_MAP_LEGEND[(world[y] || [])[x + 1] || null],
-                        west: WORLD_MAP_LEGEND[(world[y] || [])[x - 1] || null]
+                        north: WORLD_MAP_LEGEND[(world[y - 1] || [])[x] || null] || null,
+                        south: WORLD_MAP_LEGEND[(world[y + 1] || [])[x] || null] || null,
+                        east: WORLD_MAP_LEGEND[(world[y] || [])[x + 1] || null] || null,
+                        west: WORLD_MAP_LEGEND[(world[y] || [])[x - 1] || null] || null,
                     }
                 };
                 switch (type) {
@@ -147,6 +71,7 @@ class World {
                         this.createWall(objectParams);
                         break;
                     case 'WALL':
+                        wall_count += 1;
                         objectParams.permanent = true;
                         this.createWall(objectParams);
                         break;
@@ -155,6 +80,8 @@ class World {
                 }
             });
         });
+
+        console.log('Wall Count: ' + wall_count);
     }
 
     spawnPlayer (params = {}) {
