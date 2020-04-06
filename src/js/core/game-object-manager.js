@@ -1,6 +1,9 @@
 class GOM {
 	constructor () {
-		this.MILLISECONDS_BETWEEN_FRAMES = 16; // (1 / 60) * 1000
+		// 120 = 8
+		// 60 = 16
+		// 30 = 32
+		this.MILLISECONDS_BETWEEN_FRAMES = 100; // (1 / 60) * 1000
 		this.GAME_LOOP = 0;
 		// this.last_frame = new Date().getTime();
 
@@ -13,6 +16,11 @@ class GOM {
 		this.camera_offset = {
 			x: 0,
 			y: 0,
+		};
+
+		this.world_size = {
+			width: 0,
+			height: 0,
 		};
 
 		// There can only be one camera object
@@ -93,10 +101,16 @@ class GOM {
 
 		if (this.camera_object) {
 			if (this.camera_object.x > this.half_canvas_container_width) {
-				this.camera_offset.x = this.camera_object.x - this.half_canvas_container_width;
+				this.camera_offset.x = Math.floor(this.camera_object.x - this.half_canvas_container_width);
+			}
+			if (this.camera_object.x > this.world_size.width - this.half_canvas_container_width) {
+				this.camera_offset.x = this.world_size.width - this.canvas_container_width;
 			}
 			if (this.camera_object.y > this.half_canvas_container_height) {
-				this.camera_offset.y = this.camera_object.y - this.half_canvas_container_height;
+				this.camera_offset.y = Math.floor(this.camera_object.y - this.half_canvas_container_height);
+			}
+			if (this.camera_object.y > this.world_size.height - this.half_canvas_container_height) {
+				this.camera_offset.y = this.world_size.height - this.canvas_container_height;
 			}
 		}
 
@@ -180,19 +194,19 @@ class GOM {
 	setCanvasSize () {
 		// Get the width and height for you canvas, taking into account any constant menus.
 		this.canvas_container_width = this.canvas_container.clientWidth;
-		this.canvas_contatiner_height = this.canvas_container.clientHeight;
+		this.canvas_container_height = this.canvas_container.clientHeight;
 		this.half_canvas_container_width = this.canvas_container_width / 2;
-		this.half_canvas_container_height = this.canvas_contatiner_height / 2;
+		this.half_canvas_container_height = this.canvas_container_height / 2;
 		// Loop through the canvases and set the width and height
 		['control', 'effects', 'front', 'middle', 'back'].forEach((canvas_key) => {
 			this[canvas_key].canvas.setAttribute('width', this.canvas_container_width + 'px');
-			this[canvas_key].canvas.setAttribute('height', this.canvas_contatiner_height + 'px');
+			this[canvas_key].canvas.setAttribute('height', this.canvas_container_height + 'px');
 			this[canvas_key].canvas.style.width  = this.canvas_container_width + 'px';
-			this[canvas_key].canvas.style.height = this.canvas_contatiner_height + 'px';
+			this[canvas_key].canvas.style.height = this.canvas_container_height + 'px';
 			this[canvas_key].backBuffer.setAttribute('width', this.canvas_container_width + 'px');
-			this[canvas_key].backBuffer.setAttribute('height', this.canvas_contatiner_height + 'px');
+			this[canvas_key].backBuffer.setAttribute('height', this.canvas_container_height + 'px');
 			this[canvas_key].backBuffer.style.width  = this.canvas_container_width + 'px';
-			this[canvas_key].backBuffer.style.height = this.canvas_contatiner_height + 'px';
+			this[canvas_key].backBuffer.style.height = this.canvas_container_height + 'px';
 		});
 	}
 
@@ -223,18 +237,7 @@ class GOM {
 		});
 
 		this.setCanvasSize();
-		// this.startLoop();
 		this.gameLoop();
-	}
-
-	onCollidables (func, params) {
-		const collidables = this.collidable_objects;
-		for (let i = 0; i < collidables.length; ++i) {
-			const obj = collidables[i];
-			if (obj && obj[func]) {
-				obj[func](params);
-			}
-		}
 	}
 
 	gameLoop () {
@@ -243,13 +246,6 @@ class GOM {
 		});
 		this.draw();
 	}
-
-	// startLoop () {
-	// 	// setInterval will call the function for our game loop
-	// 	this.GAME_LOOP = setInterval(() => {
-	// 		this.draw();
-	// 	}, this.MILLISECONDS_BETWEEN_FRAMES);
-	// }
 
 	pauseLoop () {
 		clearInterval(this.GAME_LOOP);
@@ -286,37 +282,15 @@ class GOM {
 	}
 
 	checkCollisions (opts = {}) {
-		const { obj, closest_key: ck } = opts;
+		const { obj } = opts;
 		const collidables = this.collidable_objects;
-
-		let closest = {};
-		let results = [];
 
 		for (let i = 0; i < collidables.length; ++i) {
 			const col_obj = collidables[i];
 			if (obj.id === col_obj.id) continue;
 			const info = col_obj.checkCollision(obj);
-			if (info) {
-				if (Array.isArray(info)) {
-					for (let k = 0; k < info.length; ++k) {
-						if (ck && closest[ck] === undefined || closest[ck] > info[k][ck]) {
-							closest = info[k];
-						}
-					}
-					results = results.concat(info);
-				} else {
-					if (ck && closest[ck] === undefined || closest[ck] > info[ck]) {
-						closest = info;
-					}
-					results.push(info);
-				}
-			}
+			if (info) opts.onCollision(info, col_obj);
 		}
-
-		return {
-			closest,
-			results
-		};
 	}
 }
 

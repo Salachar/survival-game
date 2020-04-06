@@ -73,9 +73,84 @@ class Wall extends GOB {
 
     checkCollision (obj) {
         if (!obj) return null;
+        if (obj.type === 'player') {
+            return this.checkPlayerCollision(obj);
+        }
         if (obj.type === 'projectile') {
             return this.checkProjectileCollision(obj);
         }
+    }
+
+    checkPlayerCollision (obj) {
+        if (obj.velY === 0 && obj.velX === 0) return;
+
+        let next_obj_x = obj.x + obj.velX;
+        let next_obj_y = obj.y + obj.velY;
+
+        let current_obj_bounds = {
+            left: obj.x - obj.half_width,
+            right: obj.x + obj.half_width,
+            top: obj.y - obj.half_height,
+            bottom: obj.y + obj.half_height,
+        }
+        let next_obj_bounds = {
+            left: next_obj_x - obj.half_width,
+            right: next_obj_x + obj.half_width,
+            top: next_obj_y - obj.half_height,
+            bottom: next_obj_y + obj.half_height,
+        };
+        let bounds = {
+            left: this.x,
+            right: this.x + this.width,
+            top: this.y,
+            bottom: this.y + this.height,
+        };
+
+        let modified_vel = {
+            x: 0,
+            y: 0,
+        };
+
+        // We're moving right, and the step of the obj shows a collision
+        if (obj.velX > 0 && (current_obj_bounds.right <= bounds.left && next_obj_bounds.right > bounds.left)) {
+            if (verticalCollision()) {
+                modified_vel.x = -Math.abs(next_obj_bounds.right - bounds.left);
+            }
+        }
+        if (obj.velX < 0 && (current_obj_bounds.left >= bounds.right && next_obj_bounds.left < bounds.right)) {
+            if (verticalCollision()) {
+                modified_vel.x = Math.abs(next_obj_bounds.left - bounds.right);
+            }
+        }
+        if (obj.velY > 0 && (current_obj_bounds.bottom <= bounds.top && next_obj_bounds.bottom > bounds.top)) {
+            if (horizontalCollision()) {
+                modified_vel.y = -Math.abs(next_obj_bounds.bottom - bounds.top);
+            }
+        }
+        if (obj.velY < 0 && (current_obj_bounds.top >= bounds.bottom && next_obj_bounds.top < bounds.bottom)) {
+            if (horizontalCollision()) {
+                modified_vel.y = Math.abs(next_obj_bounds.top - bounds.bottom);
+            }
+        }
+
+        function horizontalCollision () {
+            if (next_obj_bounds.left > bounds.left && next_obj_bounds.left < bounds.right ||
+                next_obj_bounds.right > bounds.left && next_obj_bounds.right < bounds.right) {
+                return true;
+            }
+            return false;
+        }
+
+        function verticalCollision () {
+            if (next_obj_bounds.top > bounds.top && next_obj_bounds.top < bounds.bottom ||
+                next_obj_bounds.bottom > bounds.top && next_obj_bounds.bottom < bounds.bottom) {
+                return true;
+            }
+            return false;
+        }
+
+        if (!modified_vel.x && !modified_vel.y) return null;
+        return modified_vel;
     }
 
     checkProjectileCollision (projectile) {
@@ -100,7 +175,7 @@ class Wall extends GOB {
             }
         }
         this.layer.update = true;
-        return this.collision_points;
+        return (this.collision_points.length) ? this.collision_points : null;
     }
 
 	update () {

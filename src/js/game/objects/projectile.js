@@ -51,10 +51,24 @@ class Projectile extends GOB {
 
 	update () {
 		if (this.resolved) return;
-		this.collisions = GOM.checkCollisions({
+
+		let closest = null;
+		GOM.checkCollisions({
 			obj: this,
-			closest_key: 't1',
+			onCollision: (collision_info, collision_obj) => {
+				if (Array.isArray(collision_info)) {
+					for (let i = 0; i < collision_info.length; ++i) {
+						if (!closest || closest.t1 > collision_info[i].t1) {
+							closest = collision_info[i];
+						}
+					}
+				}
+			}
 		});
+
+		if (closest) {
+			this.closest_collision = closest;
+		}
 
 		this.resolved = true;
 		setTimeout(() => {
@@ -63,7 +77,7 @@ class Projectile extends GOB {
 	}
 
 	draw (opts = {}) {
-		if (this.collisions && this.collisions.closest) {
+		if (this.closest_collision) {
 			this.context.save();
 				this.context.beginPath();
 				this.context.lineWidth = 1;
@@ -72,8 +86,8 @@ class Projectile extends GOB {
 					this.y - GOM.camera_offset.y,
 				);
 				this.context.lineTo(
-					this.collisions.closest.x - GOM.camera_offset.x,
-					this.collisions.closest.y - GOM.camera_offset.y,
+					this.closest_collision.x - GOM.camera_offset.x,
+					this.closest_collision.y - GOM.camera_offset.y,
 				);
 				this.context.strokeStyle = "#FFFFFF";
 				this.context.stroke();

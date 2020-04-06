@@ -48,13 +48,63 @@ const WORLD_MAP = [
 'W                                      W',
 'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
 ];
+// const WORLD_MAP = [
+// '        WW                              ',
+// '         W                              ',
+// '   @                                    ',
+// '        WW                              ',
+// '        WW                              ',
+// '                                        ',
+// '                                        ',
+// '                                        ',
+// '                                        ',
+// '                                        ',
+// '                                        ',
+// '                                        ',
+// '                                        ',
+// '                                        ',
+// '                                        ',
+// '                                        ',
+// '                                        ',
+// '                                        ',
+// '                                        ',
+// '                                        ',
+// '                                        ',
+// ];
+// const WORLD_MAP = [
+// '                                        ',
+// '                                        ',
+// '   @                                    ',
+// '        W                               ',
+// '                                        ',
+// '                                        ',
+// '                                        ',
+// '                                        ',
+// '                                        ',
+// '                                        ',
+// '                                        ',
+// '                                        ',
+// '                                        ',
+// '                                        ',
+// '                                        ',
+// '                                        ',
+// '                                        ',
+// '                                        ',
+// '                                        ',
+// '                                        ',
+// '                                        ',
+// ];
+
 
 class World {
     constructor () {
-        console.log('stuff');
-
         this.cell_size = 50;
         this.half_cell_size = this.cell_size / 2;
+
+        GOM.world_size = {
+            width: WORLD_MAP[0].length * this.cell_size,
+            height: WORLD_MAP.length * this.cell_size,
+        };
 
         this.generateWorld();
     }

@@ -90,7 +90,10 @@
 
 class GOM {
 	constructor () {
-		this.MILLISECONDS_BETWEEN_FRAMES = 16; // (1 / 60) * 1000
+		// 120 = 8
+		// 60 = 16
+		// 30 = 32
+		this.MILLISECONDS_BETWEEN_FRAMES = 100; // (1 / 60) * 1000
 		this.GAME_LOOP = 0;
 		// this.last_frame = new Date().getTime();
 
@@ -103,6 +106,11 @@ class GOM {
 		this.camera_offset = {
 			x: 0,
 			y: 0,
+		};
+
+		this.world_size = {
+			width: 0,
+			height: 0,
 		};
 
 		// There can only be one camera object
@@ -183,10 +191,16 @@ class GOM {
 
 		if (this.camera_object) {
 			if (this.camera_object.x > this.half_canvas_container_width) {
-				this.camera_offset.x = this.camera_object.x - this.half_canvas_container_width;
+				this.camera_offset.x = Math.floor(this.camera_object.x - this.half_canvas_container_width);
+			}
+			if (this.camera_object.x > this.world_size.width - this.half_canvas_container_width) {
+				this.camera_offset.x = this.world_size.width - this.canvas_container_width;
 			}
 			if (this.camera_object.y > this.half_canvas_container_height) {
-				this.camera_offset.y = this.camera_object.y - this.half_canvas_container_height;
+				this.camera_offset.y = Math.floor(this.camera_object.y - this.half_canvas_container_height);
+			}
+			if (this.camera_object.y > this.world_size.height - this.half_canvas_container_height) {
+				this.camera_offset.y = this.world_size.height - this.canvas_container_height;
 			}
 		}
 
@@ -270,19 +284,19 @@ class GOM {
 	setCanvasSize () {
 		// Get the width and height for you canvas, taking into account any constant menus.
 		this.canvas_container_width = this.canvas_container.clientWidth;
-		this.canvas_contatiner_height = this.canvas_container.clientHeight;
+		this.canvas_container_height = this.canvas_container.clientHeight;
 		this.half_canvas_container_width = this.canvas_container_width / 2;
-		this.half_canvas_container_height = this.canvas_contatiner_height / 2;
+		this.half_canvas_container_height = this.canvas_container_height / 2;
 		// Loop through the canvases and set the width and height
 		['control', 'effects', 'front', 'middle', 'back'].forEach((canvas_key) => {
 			this[canvas_key].canvas.setAttribute('width', this.canvas_container_width + 'px');
-			this[canvas_key].canvas.setAttribute('height', this.canvas_contatiner_height + 'px');
+			this[canvas_key].canvas.setAttribute('height', this.canvas_container_height + 'px');
 			this[canvas_key].canvas.style.width  = this.canvas_container_width + 'px';
-			this[canvas_key].canvas.style.height = this.canvas_contatiner_height + 'px';
+			this[canvas_key].canvas.style.height = this.canvas_container_height + 'px';
 			this[canvas_key].backBuffer.setAttribute('width', this.canvas_container_width + 'px');
-			this[canvas_key].backBuffer.setAttribute('height', this.canvas_contatiner_height + 'px');
+			this[canvas_key].backBuffer.setAttribute('height', this.canvas_container_height + 'px');
 			this[canvas_key].backBuffer.style.width  = this.canvas_container_width + 'px';
-			this[canvas_key].backBuffer.style.height = this.canvas_contatiner_height + 'px';
+			this[canvas_key].backBuffer.style.height = this.canvas_container_height + 'px';
 		});
 	}
 
@@ -313,18 +327,7 @@ class GOM {
 		});
 
 		this.setCanvasSize();
-		// this.startLoop();
 		this.gameLoop();
-	}
-
-	onCollidables (func, params) {
-		const collidables = this.collidable_objects;
-		for (let i = 0; i < collidables.length; ++i) {
-			const obj = collidables[i];
-			if (obj && obj[func]) {
-				obj[func](params);
-			}
-		}
 	}
 
 	gameLoop () {
@@ -333,13 +336,6 @@ class GOM {
 		});
 		this.draw();
 	}
-
-	// startLoop () {
-	// 	// setInterval will call the function for our game loop
-	// 	this.GAME_LOOP = setInterval(() => {
-	// 		this.draw();
-	// 	}, this.MILLISECONDS_BETWEEN_FRAMES);
-	// }
 
 	pauseLoop () {
 		clearInterval(this.GAME_LOOP);
@@ -376,37 +372,15 @@ class GOM {
 	}
 
 	checkCollisions (opts = {}) {
-		const { obj, closest_key: ck } = opts;
+		const { obj } = opts;
 		const collidables = this.collidable_objects;
-
-		let closest = {};
-		let results = [];
 
 		for (let i = 0; i < collidables.length; ++i) {
 			const col_obj = collidables[i];
 			if (obj.id === col_obj.id) continue;
 			const info = col_obj.checkCollision(obj);
-			if (info) {
-				if (Array.isArray(info)) {
-					for (let k = 0; k < info.length; ++k) {
-						if (ck && closest[ck] === undefined || closest[ck] > info[k][ck]) {
-							closest = info[k];
-						}
-					}
-					results = results.concat(info);
-				} else {
-					if (ck && closest[ck] === undefined || closest[ck] > info[ck]) {
-						closest = info;
-					}
-					results.push(info);
-				}
-			}
+			if (info) opts.onCollision(info, col_obj);
 		}
-
-		return {
-			closest,
-			results
-		};
 	}
 }
 
@@ -735,10 +709,24 @@ class Projectile extends GOB {
 
 	update () {
 		if (this.resolved) return;
-		this.collisions = GOM.checkCollisions({
+
+		let closest = null;
+		GOM.checkCollisions({
 			obj: this,
-			closest_key: 't1',
+			onCollision: (collision_info, collision_obj) => {
+				if (Array.isArray(collision_info)) {
+					for (let i = 0; i < collision_info.length; ++i) {
+						if (!closest || closest.t1 > collision_info[i].t1) {
+							closest = collision_info[i];
+						}
+					}
+				}
+			}
 		});
+
+		if (closest) {
+			this.closest_collision = closest;
+		}
 
 		this.resolved = true;
 		setTimeout(() => {
@@ -747,7 +735,7 @@ class Projectile extends GOB {
 	}
 
 	draw (opts = {}) {
-		if (this.collisions && this.collisions.closest) {
+		if (this.closest_collision) {
 			this.context.save();
 				this.context.beginPath();
 				this.context.lineWidth = 1;
@@ -756,8 +744,8 @@ class Projectile extends GOB {
 					this.y - GOM.camera_offset.y,
 				);
 				this.context.lineTo(
-					this.collisions.closest.x - GOM.camera_offset.x,
-					this.collisions.closest.y - GOM.camera_offset.y,
+					this.closest_collision.x - GOM.camera_offset.x,
+					this.closest_collision.y - GOM.camera_offset.y,
 				);
 				this.context.strokeStyle = "#FFFFFF";
 				this.context.stroke();
@@ -1069,8 +1057,8 @@ class Player extends GOB {
         this.velX = 0;
         this.velY = 0;
 
-        this.speed = 5;
-        this.speed_diagonal = this.speed * 0.715;
+        this.speed = 6;
+        this.speed_diagonal = Math.ceil(this.speed * 0.715);
 
 		this.width = 20;
         this.height = 20;
@@ -1143,8 +1131,35 @@ class Player extends GOB {
     }
 
 	update () {
-        this.x += this.velX;
-		this.y += this.velY;
+        if (this.velX === 0 && this.velY == 0) return;
+        let velocity_mods = {
+            x: 0,
+            y: 0
+        };
+        let hold_object = null;
+		GOM.checkCollisions({
+			obj: this,
+			onCollision: (collision_info, collision_obj) => {
+                if (collision_info.x && collision_info.y) {
+                    hold_object = collision_info;
+                    return;
+                }
+                if (collision_info.x) {
+                    velocity_mods.x = collision_info.x;
+                }
+                if (collision_info.y) {
+                    velocity_mods.y = collision_info.y;
+                }
+			}
+        });
+
+        if (hold_object && !velocity_mods.x && !velocity_mods.y) {
+            velocity_mods.x = hold_object.x;
+            velocity_mods.y = hold_object.y;
+        }
+
+        this.x = Math.round(this.x + this.velX + velocity_mods.x);
+		this.y = Math.round(this.y + this.velY + velocity_mods.y);
     }
 
     keyDown (key) {
@@ -1202,7 +1217,7 @@ class Player extends GOB {
                 this.width,
                 this.height
             );
-			this.context.fillStyle = '#FFFFFF';
+			this.context.fillStyle = '#0000FF';
 			this.context.fill();
 		this.context.restore();
 	}
@@ -1290,9 +1305,84 @@ class Wall extends GOB {
 
     checkCollision (obj) {
         if (!obj) return null;
+        if (obj.type === 'player') {
+            return this.checkPlayerCollision(obj);
+        }
         if (obj.type === 'projectile') {
             return this.checkProjectileCollision(obj);
         }
+    }
+
+    checkPlayerCollision (obj) {
+        if (obj.velY === 0 && obj.velX === 0) return;
+
+        let next_obj_x = obj.x + obj.velX;
+        let next_obj_y = obj.y + obj.velY;
+
+        let current_obj_bounds = {
+            left: obj.x - obj.half_width,
+            right: obj.x + obj.half_width,
+            top: obj.y - obj.half_height,
+            bottom: obj.y + obj.half_height,
+        }
+        let next_obj_bounds = {
+            left: next_obj_x - obj.half_width,
+            right: next_obj_x + obj.half_width,
+            top: next_obj_y - obj.half_height,
+            bottom: next_obj_y + obj.half_height,
+        };
+        let bounds = {
+            left: this.x,
+            right: this.x + this.width,
+            top: this.y,
+            bottom: this.y + this.height,
+        };
+
+        let modified_vel = {
+            x: 0,
+            y: 0,
+        };
+
+        // We're moving right, and the step of the obj shows a collision
+        if (obj.velX > 0 && (current_obj_bounds.right <= bounds.left && next_obj_bounds.right > bounds.left)) {
+            if (verticalCollision()) {
+                modified_vel.x = -Math.abs(next_obj_bounds.right - bounds.left);
+            }
+        }
+        if (obj.velX < 0 && (current_obj_bounds.left >= bounds.right && next_obj_bounds.left < bounds.right)) {
+            if (verticalCollision()) {
+                modified_vel.x = Math.abs(next_obj_bounds.left - bounds.right);
+            }
+        }
+        if (obj.velY > 0 && (current_obj_bounds.bottom <= bounds.top && next_obj_bounds.bottom > bounds.top)) {
+            if (horizontalCollision()) {
+                modified_vel.y = -Math.abs(next_obj_bounds.bottom - bounds.top);
+            }
+        }
+        if (obj.velY < 0 && (current_obj_bounds.top >= bounds.bottom && next_obj_bounds.top < bounds.bottom)) {
+            if (horizontalCollision()) {
+                modified_vel.y = Math.abs(next_obj_bounds.top - bounds.bottom);
+            }
+        }
+
+        function horizontalCollision () {
+            if (next_obj_bounds.left > bounds.left && next_obj_bounds.left < bounds.right ||
+                next_obj_bounds.right > bounds.left && next_obj_bounds.right < bounds.right) {
+                return true;
+            }
+            return false;
+        }
+
+        function verticalCollision () {
+            if (next_obj_bounds.top > bounds.top && next_obj_bounds.top < bounds.bottom ||
+                next_obj_bounds.bottom > bounds.top && next_obj_bounds.bottom < bounds.bottom) {
+                return true;
+            }
+            return false;
+        }
+
+        if (!modified_vel.x && !modified_vel.y) return null;
+        return modified_vel;
     }
 
     checkProjectileCollision (projectile) {
@@ -1317,7 +1407,7 @@ class Wall extends GOB {
             }
         }
         this.layer.update = true;
-        return this.collision_points;
+        return (this.collision_points.length) ? this.collision_points : null;
     }
 
 	update () {
@@ -1634,13 +1724,63 @@ const WORLD_MAP = [
 'W                                      W',
 'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
 ];
+// const WORLD_MAP = [
+// '        WW                              ',
+// '         W                              ',
+// '   @                                    ',
+// '        WW                              ',
+// '        WW                              ',
+// '                                        ',
+// '                                        ',
+// '                                        ',
+// '                                        ',
+// '                                        ',
+// '                                        ',
+// '                                        ',
+// '                                        ',
+// '                                        ',
+// '                                        ',
+// '                                        ',
+// '                                        ',
+// '                                        ',
+// '                                        ',
+// '                                        ',
+// '                                        ',
+// ];
+// const WORLD_MAP = [
+// '                                        ',
+// '                                        ',
+// '   @                                    ',
+// '        W                               ',
+// '                                        ',
+// '                                        ',
+// '                                        ',
+// '                                        ',
+// '                                        ',
+// '                                        ',
+// '                                        ',
+// '                                        ',
+// '                                        ',
+// '                                        ',
+// '                                        ',
+// '                                        ',
+// '                                        ',
+// '                                        ',
+// '                                        ',
+// '                                        ',
+// '                                        ',
+// ];
+
 
 class World {
     constructor () {
-        console.log('stuff');
-
         this.cell_size = 50;
         this.half_cell_size = this.cell_size / 2;
+
+        GOM.world_size = {
+            width: WORLD_MAP[0].length * this.cell_size,
+            height: WORLD_MAP.length * this.cell_size,
+        };
 
         this.generateWorld();
     }
