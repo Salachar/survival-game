@@ -4,6 +4,8 @@ class GOM {
 		// 60 = 16
 		// 30 = 32
 		this.MILLISECONDS_BETWEEN_FRAMES = 100; // (1 / 60) * 1000
+		this.FPS_INTERVAL = 1000 / 60;
+
 		this.GAME_LOOP = 0;
 		this.last_frame = new Date().getTime();
 
@@ -22,6 +24,8 @@ class GOM {
 			width: 0,
 			height: 0,
 		};
+
+		this.then = Date.now();
 
 		// There can only be one camera object
 		// This is used for scrolling and the GOM will
@@ -245,7 +249,16 @@ class GOM {
 		window.requestAnimationFrame(() => {
 			this.gameLoop();
 		});
-		this.draw();
+
+		const now = Date.now();
+		const elapsed = now - this.then;
+		// if enough time has elapsed, draw the next frame
+		if (elapsed > this.FPS_INTERVAL) {
+			// Get ready for next frame by setting then=now, but also adjust for your
+			// specified fpsInterval not being a multiple of RAF's interval (16.7ms)
+			this.then = now - (elapsed % this.FPS_INTERVAL);
+			this.draw();
+		}
 	}
 
 	pauseLoop () {

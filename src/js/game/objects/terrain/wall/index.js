@@ -17,8 +17,6 @@ class Wall extends GOB {
 	constructor (opts = {}) {
         super(opts);
 
-        console.log(opts);
-
         this.type = "wall";
         this.collidable = true;
 

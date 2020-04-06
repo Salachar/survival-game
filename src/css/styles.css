@@ -22,12 +22,18 @@ html, body {
 
 #fps_counter {
 	position: fixed;
-    top: 5px;
-    left: 10px;
+    top: 0px;
+    left: 0;
     font-size: 32px;
     z-index: 100;
     font-weight: bold;
     font-family: arial;
+    color: yellow;
+    background-color: black;
+    height: 33px;
+    line-height: 36px;
+    padding: 2px 3px;
+    border-bottom-right-radius: 5px;
 }
 
 /*******************************************************************************
