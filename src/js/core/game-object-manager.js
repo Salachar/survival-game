@@ -5,7 +5,7 @@ class GOM {
 		// 30 = 32
 		this.MILLISECONDS_BETWEEN_FRAMES = 100; // (1 / 60) * 1000
 		this.GAME_LOOP = 0;
-		// this.last_frame = new Date().getTime();
+		this.last_frame = new Date().getTime();
 
 		this.__props = {};
 
@@ -29,6 +29,7 @@ class GOM {
 		// as it moves
 		this.camera_object = null;
 
+		this.fps_counter = document.getElementById('fps_counter');
 		this.canvas_container = document.getElementById('canvas_container');
 
 		this.startup();
@@ -94,10 +95,10 @@ class GOM {
 		// through manual calls.
 
 		// calculate the time since the last frame
-		// const this_frame = new Date().getTime();
-		// const dt = (this_frame - this.last_frame) / 1000;
-		// this.last_frame = this_frame;
-		// this.el_fps_counter.innerHTML = Math.ceil(1 / dt);
+		const this_frame = new Date().getTime();
+		const dt = (this_frame - this.last_frame) / 1000;
+		this.last_frame = this_frame;
+		this.fps_counter.innerHTML = Math.ceil(1 / dt);
 
 		if (this.camera_object) {
 			if (this.camera_object.x > this.half_canvas_container_width) {

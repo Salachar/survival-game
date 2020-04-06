@@ -81,7 +81,7 @@
 /******/
 /******/
 /******/ 	// Load entry module and return exports
-/******/ 	return __webpack_require__(__webpack_require__.s = 12);
+/******/ 	return __webpack_require__(__webpack_require__.s = 7);
 /******/ })
 /************************************************************************/
 /******/ ([
@@ -95,7 +95,7 @@ class GOM {
 		// 30 = 32
 		this.MILLISECONDS_BETWEEN_FRAMES = 100; // (1 / 60) * 1000
 		this.GAME_LOOP = 0;
-		// this.last_frame = new Date().getTime();
+		this.last_frame = new Date().getTime();
 
 		this.__props = {};
 
@@ -119,6 +119,7 @@ class GOM {
 		// as it moves
 		this.camera_object = null;
 
+		this.fps_counter = document.getElementById('fps_counter');
 		this.canvas_container = document.getElementById('canvas_container');
 
 		this.startup();
@@ -184,10 +185,10 @@ class GOM {
 		// through manual calls.
 
 		// calculate the time since the last frame
-		// const this_frame = new Date().getTime();
-		// const dt = (this_frame - this.last_frame) / 1000;
-		// this.last_frame = this_frame;
-		// this.el_fps_counter.innerHTML = Math.ceil(1 / dt);
+		const this_frame = new Date().getTime();
+		const dt = (this_frame - this.last_frame) / 1000;
+		this.last_frame = this_frame;
+		this.fps_counter.innerHTML = Math.ceil(1 / dt);
 
 		if (this.camera_object) {
 			if (this.camera_object.x > this.half_canvas_container_width) {
@@ -1062,15 +1063,15 @@ const GOM = __webpack_require__(0);
 const GIM = __webpack_require__(1);
 const GOB = __webpack_require__(2);
 
-const { getIntersection, degreesToRadians } = __webpack_require__(16);
+const { getIntersection, degreesToRadians } = __webpack_require__(11);
 
 const WALL_IMAGES = {
-    none: __webpack_require__(7),
-    one: __webpack_require__(8),
-    two: __webpack_require__(9),
-    two_straight: __webpack_require__(18),
-    three: __webpack_require__(10),
-    four: __webpack_require__(11),
+    none: __webpack_require__(12),
+    one: __webpack_require__(13),
+    two: __webpack_require__(14),
+    two_straight: __webpack_require__(15),
+    three: __webpack_require__(16),
+    four: __webpack_require__(17),
 }
 
 class Wall extends GOB {
@@ -1391,48 +1392,18 @@ module.exports = Wall;
 /* 7 */
 /***/ (function(module, exports, __webpack_require__) {
 
-module.exports = __webpack_require__.p + "src/js/game/objects/terrain/wall/wall_open_none.png";
-
-/***/ }),
-/* 8 */
-/***/ (function(module, exports, __webpack_require__) {
-
-module.exports = __webpack_require__.p + "src/js/game/objects/terrain/wall/wall_open_one.png";
-
-/***/ }),
-/* 9 */
-/***/ (function(module, exports, __webpack_require__) {
-
-module.exports = __webpack_require__.p + "src/js/game/objects/terrain/wall/wall_open_two.png";
-
-/***/ }),
-/* 10 */
-/***/ (function(module, exports, __webpack_require__) {
-
-module.exports = __webpack_require__.p + "src/js/game/objects/terrain/wall/wall_open_three.png";
-
-/***/ }),
-/* 11 */
-/***/ (function(module, exports, __webpack_require__) {
-
-module.exports = __webpack_require__.p + "src/js/game/objects/terrain/wall/wall_open_four.png";
-
-/***/ }),
-/* 12 */
-/***/ (function(module, exports, __webpack_require__) {
-
 const GOM = __webpack_require__(0);
 const GIM = __webpack_require__(1);
 
-const Menu = __webpack_require__(13);
+const Menu = __webpack_require__(8);
 
-const GI = __webpack_require__(14);
-const CONFIG = __webpack_require__(15);
+const GI = __webpack_require__(9);
+const CONFIG = __webpack_require__(10);
 
 const Player = __webpack_require__(5);
 const Wall = __webpack_require__(6);
 
-const World = __webpack_require__(17);
+const World = __webpack_require__(18);
 
 const APP = {};
 window.APP = APP;
@@ -1518,7 +1489,7 @@ and offset everything else that much
 
 
 /***/ }),
-/* 13 */
+/* 8 */
 /***/ (function(module, exports, __webpack_require__) {
 
 const GOM = __webpack_require__(0);
@@ -1537,7 +1508,7 @@ module.exports = new Menu();
 
 
 /***/ }),
-/* 14 */
+/* 9 */
 /***/ (function(module, exports, __webpack_require__) {
 
 const GOM = __webpack_require__(0);
@@ -1573,7 +1544,7 @@ module.exports = new GI();
 
 
 /***/ }),
-/* 15 */
+/* 10 */
 /***/ (function(module, exports) {
 
 class CONFIG {
@@ -1588,7 +1559,7 @@ module.exports = new CONFIG();
 
 
 /***/ }),
-/* 16 */
+/* 11 */
 /***/ (function(module, exports) {
 
 const Helpers = {
@@ -1818,7 +1789,43 @@ module.exports = Helpers;
 
 
 /***/ }),
+/* 12 */
+/***/ (function(module, exports, __webpack_require__) {
+
+module.exports = __webpack_require__.p + "src/js/game/objects/terrain/wall/wall_open_none.png";
+
+/***/ }),
+/* 13 */
+/***/ (function(module, exports, __webpack_require__) {
+
+module.exports = __webpack_require__.p + "src/js/game/objects/terrain/wall/wall_open_one.png";
+
+/***/ }),
+/* 14 */
+/***/ (function(module, exports, __webpack_require__) {
+
+module.exports = __webpack_require__.p + "src/js/game/objects/terrain/wall/wall_open_two.png";
+
+/***/ }),
+/* 15 */
+/***/ (function(module, exports, __webpack_require__) {
+
+module.exports = __webpack_require__.p + "src/js/game/objects/terrain/wall/wall_open_two_straight.png";
+
+/***/ }),
+/* 16 */
+/***/ (function(module, exports, __webpack_require__) {
+
+module.exports = __webpack_require__.p + "src/js/game/objects/terrain/wall/wall_open_three.png";
+
+/***/ }),
 /* 17 */
+/***/ (function(module, exports, __webpack_require__) {
+
+module.exports = __webpack_require__.p + "src/js/game/objects/terrain/wall/wall_open_four.png";
+
+/***/ }),
+/* 18 */
 /***/ (function(module, exports, __webpack_require__) {
 
 const GOM = __webpack_require__(0);
@@ -2004,12 +2011,6 @@ class World {
 }
 
 module.exports = World;
-
-/***/ }),
-/* 18 */
-/***/ (function(module, exports, __webpack_require__) {
-
-module.exports = __webpack_require__.p + "src/js/game/objects/terrain/wall/wall_open_two_straight.png";
 
 /***/ })
 /******/ ]);
