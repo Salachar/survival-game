@@ -14,6 +14,8 @@ class GOB {
 
 		this.collidable = false;
 
+		this.in_viewport = true;
+
 		this.__props = {};
 
 		this.mouse_lock = {

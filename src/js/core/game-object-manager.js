@@ -20,6 +20,9 @@ class GOM {
 			y: 0,
 		};
 
+		this.viewport = null;
+		this.viewport_buffer = 100; // cell size * 2
+
 		this.world_size = {
 			width: 0,
 			height: 0,
@@ -104,6 +107,7 @@ class GOM {
 		this.last_frame = this_frame;
 		this.fps_counter.innerHTML = Math.ceil(1 / dt);
 
+		this.viewport = null;
 		if (this.camera_object) {
 			if (this.camera_object.x > this.half_canvas_container_width) {
 				this.camera_offset.x = Math.floor(this.camera_object.x - this.half_canvas_container_width);
@@ -117,6 +121,12 @@ class GOM {
 			if (this.camera_object.y > this.world_size.height - this.half_canvas_container_height) {
 				this.camera_offset.y = this.world_size.height - this.canvas_container_height;
 			}
+			this.viewport = {
+				top: this.camera_offset.y - this.viewport_buffer,
+				bottom: this.camera_offset.y + this.canvas_container_height + this.viewport_buffer,
+				left: this.camera_offset.x - this.viewport_buffer,
+				right: this.camera_offset.x + this.canvas_container_width + this.viewport_buffer,
+			};
 		}
 
 		this.addNewGameObjects();
@@ -127,6 +137,8 @@ class GOM {
 		let new_collidable_objects_list = [];
 		for (let i = 0; i < this.game_objects.length; ++i) {
 			let gameObj = this.game_objects[i];
+
+			gameObj.in_viewport = this.isInViewport(gameObj);
 
 			if (gameObj.update) {
 				gameObj.update();
@@ -161,8 +173,17 @@ class GOM {
 			this.back.draw();
 			this.back.update = false;
 		}
+	}
 
-		// this.el_num_objects_counter.innerHTML = this.game_objects.length;
+	isInViewport (obj) {
+		if (!obj || !this.viewport) return true;
+		if (obj.x > this.viewport.right ||
+			obj.x < this.viewport.left ||
+			obj.y < this.viewport.top ||
+			obj.y > this.viewport.bottom) {
+			return false;
+		}
+		return true;
 	}
 
 	addNewGameObjects () {

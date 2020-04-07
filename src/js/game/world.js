@@ -4,7 +4,7 @@ const GOB = require('core/game-object-base');
 
 const Player = require('game/objects/player');
 const Wall = require('game/objects/terrain/wall');
-
+const Tree = require('game/objects/terrain/tree');
 /*
 What kind of environment do I want.
     - No tiers, just one flat plane
@@ -21,6 +21,7 @@ const WORLD_MAP_LEGEND = {
     ' ': 'EMPTY',
     'R': 'ROCK',
     '@': 'PLAYER_SPAWN',
+    'T': 'TREE',
     'W': 'WALL', // permanent wall is permanent rock
 };
 
@@ -71,17 +72,16 @@ class World {
                         this.createWall(objectParams);
                         break;
                     case 'WALL':
-                        wall_count += 1;
                         objectParams.permanent = true;
                         this.createWall(objectParams);
                         break;
+                    case 'TREE':
+                        this.createTree(objectParams);
                     default: // EMPTY?
                         break;
                 }
             });
         });
-
-        console.log('Wall Count: ' + wall_count);
     }
 
     spawnPlayer (params = {}) {
@@ -101,6 +101,19 @@ class World {
             layer: GOM.front,
             x: params.x * this.cell_size,
             y: params.y * this.cell_size,
+            z: 1,
+            width: this.cell_size,
+            height: this.cell_size,
+        });
+    }
+
+    createTree (params = {}) {
+        new Tree({
+            ...params,
+            layer: GOM.front,
+            x: params.x * this.cell_size,
+            y: params.y * this.cell_size,
+            z: 2,
             width: this.cell_size,
             height: this.cell_size,
         });

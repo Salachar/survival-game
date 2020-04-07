@@ -110,6 +110,9 @@ class GOM {
 			y: 0,
 		};
 
+		this.viewport = null;
+		this.viewport_buffer = 100; // cell size * 2
+
 		this.world_size = {
 			width: 0,
 			height: 0,
@@ -194,6 +197,7 @@ class GOM {
 		this.last_frame = this_frame;
 		this.fps_counter.innerHTML = Math.ceil(1 / dt);
 
+		this.viewport = null;
 		if (this.camera_object) {
 			if (this.camera_object.x > this.half_canvas_container_width) {
 				this.camera_offset.x = Math.floor(this.camera_object.x - this.half_canvas_container_width);
@@ -207,6 +211,12 @@ class GOM {
 			if (this.camera_object.y > this.world_size.height - this.half_canvas_container_height) {
 				this.camera_offset.y = this.world_size.height - this.canvas_container_height;
 			}
+			this.viewport = {
+				top: this.camera_offset.y - this.viewport_buffer,
+				bottom: this.camera_offset.y + this.canvas_container_height + this.viewport_buffer,
+				left: this.camera_offset.x - this.viewport_buffer,
+				right: this.camera_offset.x + this.canvas_container_width + this.viewport_buffer,
+			};
 		}
 
 		this.addNewGameObjects();
@@ -217,6 +227,8 @@ class GOM {
 		let new_collidable_objects_list = [];
 		for (let i = 0; i < this.game_objects.length; ++i) {
 			let gameObj = this.game_objects[i];
+
+			gameObj.in_viewport = this.isInViewport(gameObj);
 
 			if (gameObj.update) {
 				gameObj.update();
@@ -251,8 +263,17 @@ class GOM {
 			this.back.draw();
 			this.back.update = false;
 		}
+	}
 
-		// this.el_num_objects_counter.innerHTML = this.game_objects.length;
+	isInViewport (obj) {
+		if (!obj || !this.viewport) return true;
+		if (obj.x > this.viewport.right ||
+			obj.x < this.viewport.left ||
+			obj.y < this.viewport.top ||
+			obj.y > this.viewport.bottom) {
+			return false;
+		}
+		return true;
 	}
 
 	addNewGameObjects () {
@@ -563,6 +584,8 @@ class GOB {
 		this.y = opts.y || 0;
 
 		this.collidable = false;
+
+		this.in_viewport = true;
 
 		this.__props = {};
 
@@ -1240,6 +1263,7 @@ class Wall extends GOB {
     }
 
     checkPlayerCollision (obj) {
+        if (!this.in_viewport) return;
         if (obj.velY === 0 && obj.velX === 0) return;
 
         if (Math.abs(obj.x - this.x) > 100 || Math.abs(obj.y - this.y) > 100) return;
@@ -1385,10 +1409,11 @@ class Wall extends GOB {
         }
     }
 
-	draw (opts = {}) {
+	draw () {
+        if (!this.in_viewport) return;
 		this.context.save();
-            this.drawRect();
-            // this.drawImage();
+            // this.drawRect();
+            this.drawImage();
         this.context.restore();
         this.drawShotPoints();
 	}
@@ -1412,10 +1437,10 @@ const CONFIG = __webpack_require__(10);
 const Player = __webpack_require__(5);
 const Wall = __webpack_require__(6);
 
-const REAL_MAP = __webpack_require__(19);
-const DEBUG_MAP = __webpack_require__(20);
+const REAL_MAP = __webpack_require__(18);
+const DEBUG_MAP = __webpack_require__(19);
 
-const World = __webpack_require__(18);
+const World = __webpack_require__(20);
 
 const APP = {};
 window.APP = APP;
@@ -1435,7 +1460,7 @@ class Game {
 	}
 
 	start () {
-		this.world = new World(REAL_MAP);
+		this.world = new World(DEBUG_MAP);
 	}
 }
 
@@ -1789,121 +1814,6 @@ module.exports = __webpack_require__.p + "src/js/game/objects/terrain/wall/wall_
 
 /***/ }),
 /* 18 */
-/***/ (function(module, exports, __webpack_require__) {
-
-const GOM = __webpack_require__(0);
-const GIM = __webpack_require__(1);
-const GOB = __webpack_require__(2);
-
-const Player = __webpack_require__(5);
-const Wall = __webpack_require__(6);
-
-/*
-What kind of environment do I want.
-    - No tiers, just one flat plane
-    - Rivers
-    - Lakes
-    - Trees (like one per tile)
-    - Forest (dense trees, 3-4 per tile or something)
-    - Rocks/Boulders (they can be kinda random size)
-    - Iron deposit
-    - Wall (like permanent unmovable/undamageable)
-*/
-
-const WORLD_MAP_LEGEND = {
-    ' ': 'EMPTY',
-    'R': 'ROCK',
-    '@': 'PLAYER_SPAWN',
-    'W': 'WALL', // permanent wall is permanent rock
-};
-
-class World {
-    constructor (world_map) {
-        this.cell_size = 50;
-        this.half_cell_size = this.cell_size / 2;
-
-        GOM.world_size = {
-            width: world_map[0].length * this.cell_size,
-            height: world_map.length * this.cell_size,
-        };
-
-        this.world = this.parseWorld(world_map);
-        this.generateWorld(this.world);
-    }
-
-    parseWorld (map) {
-        return map.map((map_row) => {
-            return map_row.split('');
-        });
-    }
-
-    generateWorld (world) {
-        let wall_count = 0;
-
-        console.log('World Width: ' + world[0].length);
-        console.log('World Height: ' + world.length);
-
-        world.forEach((row, y) => {
-            row.forEach((tile, x) => {
-                const type = WORLD_MAP_LEGEND[tile];
-                const objectParams = {
-                    x,
-                    y,
-                    neighbors: {
-                        north: WORLD_MAP_LEGEND[(world[y - 1] || [])[x] || null] || null,
-                        south: WORLD_MAP_LEGEND[(world[y + 1] || [])[x] || null] || null,
-                        east: WORLD_MAP_LEGEND[(world[y] || [])[x + 1] || null] || null,
-                        west: WORLD_MAP_LEGEND[(world[y] || [])[x - 1] || null] || null,
-                    }
-                };
-                switch (type) {
-                    case 'PLAYER_SPAWN':
-                        this.spawnPlayer(objectParams);
-                        break;
-                    case 'ROCK':
-                        this.createWall(objectParams);
-                        break;
-                    case 'WALL':
-                        wall_count += 1;
-                        objectParams.permanent = true;
-                        this.createWall(objectParams);
-                        break;
-                    default: // EMPTY?
-                        break;
-                }
-            });
-        });
-
-        console.log('Wall Count: ' + wall_count);
-    }
-
-    spawnPlayer (params = {}) {
-        // We want the player to spawn in the middle of the cell
-        new Player({
-            ...params,
-            camera_follow: true,
-            layer: GOM.front,
-            x: (params.x * this.cell_size) + this.half_cell_size,
-            y: (params.y * this.cell_size) + this.half_cell_size,
-        });
-    }
-
-    createWall (params = {}) {
-        new Wall({
-            ...params,
-            layer: GOM.front,
-            x: params.x * this.cell_size,
-            y: params.y * this.cell_size,
-            width: this.cell_size,
-            height: this.cell_size,
-        });
-    }
-}
-
-module.exports = World;
-
-/***/ }),
-/* 19 */
 /***/ (function(module, exports) {
 
 module.exports = [
@@ -1940,16 +1850,16 @@ module.exports = [
 ];
 
 /***/ }),
-/* 20 */
+/* 19 */
 /***/ (function(module, exports) {
 
 module.exports = [
 'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
-'W                                                WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
-'W  @        W                  WW                WWWWWWW                WWWWWWWW',
-'W          WWW              WW                         WWWWWW       WWWWWWWW',
-'W  W  W     W      WWWWWWW      WW               WWWWWWWWWWWWWWWWWW   WWWWWWWWWW',
-'W                      WW       WW               WWWWWWWWWWWWWWWWW        WWWWWW',
+'W      TTT                                       WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'W  @    TT  W                  WW                WWWWWWW                WWWWWWWW',
+'W      T T WWW              WW                             WWWWWW       WWWWWWWW',
+'W  W  W T TTW      WWWWWWW      WW               WWWWWWWWWWWWWWWWWW   WWWWWWWWWW',
+'W          TT          WW       WW               WWWWWWWWWWWWWWWWW        WWWWWW',
 'W  W  WWWW           W          WW               WWWWWWWWWWWWWWWWWWWWW     WWWWW',
 'W  W                                             WWWWWWWWWWWWWWWWWWWWWWWWW WWWWW',
 'W  W  WWWWW      W  WWW        WW                WWWWWWWWWWWWWWWWWWWWWWWWW WWWWW',
@@ -2034,7 +1944,418 @@ module.exports = [
 'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
 'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
 'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
 ];
+
+/***/ }),
+/* 20 */
+/***/ (function(module, exports, __webpack_require__) {
+
+const GOM = __webpack_require__(0);
+const GIM = __webpack_require__(1);
+const GOB = __webpack_require__(2);
+
+const Player = __webpack_require__(5);
+const Wall = __webpack_require__(6);
+const Tree = __webpack_require__(21);
+/*
+What kind of environment do I want.
+    - No tiers, just one flat plane
+    - Rivers
+    - Lakes
+    - Trees (like one per tile)
+    - Forest (dense trees, 3-4 per tile or something)
+    - Rocks/Boulders (they can be kinda random size)
+    - Iron deposit
+    - Wall (like permanent unmovable/undamageable)
+*/
+
+const WORLD_MAP_LEGEND = {
+    ' ': 'EMPTY',
+    'R': 'ROCK',
+    '@': 'PLAYER_SPAWN',
+    'T': 'TREE',
+    'W': 'WALL', // permanent wall is permanent rock
+};
+
+class World {
+    constructor (world_map) {
+        this.cell_size = 50;
+        this.half_cell_size = this.cell_size / 2;
+
+        GOM.world_size = {
+            width: world_map[0].length * this.cell_size,
+            height: world_map.length * this.cell_size,
+        };
+
+        this.world = this.parseWorld(world_map);
+        this.generateWorld(this.world);
+    }
+
+    parseWorld (map) {
+        return map.map((map_row) => {
+            return map_row.split('');
+        });
+    }
+
+    generateWorld (world) {
+        let wall_count = 0;
+
+        console.log('World Width: ' + world[0].length);
+        console.log('World Height: ' + world.length);
+
+        world.forEach((row, y) => {
+            row.forEach((tile, x) => {
+                const type = WORLD_MAP_LEGEND[tile];
+                const objectParams = {
+                    x,
+                    y,
+                    neighbors: {
+                        north: WORLD_MAP_LEGEND[(world[y - 1] || [])[x] || null] || null,
+                        south: WORLD_MAP_LEGEND[(world[y + 1] || [])[x] || null] || null,
+                        east: WORLD_MAP_LEGEND[(world[y] || [])[x + 1] || null] || null,
+                        west: WORLD_MAP_LEGEND[(world[y] || [])[x - 1] || null] || null,
+                    }
+                };
+                switch (type) {
+                    case 'PLAYER_SPAWN':
+                        this.spawnPlayer(objectParams);
+                        break;
+                    case 'ROCK':
+                        this.createWall(objectParams);
+                        break;
+                    case 'WALL':
+                        objectParams.permanent = true;
+                        this.createWall(objectParams);
+                        break;
+                    case 'TREE':
+                        this.createTree(objectParams);
+                    default: // EMPTY?
+                        break;
+                }
+            });
+        });
+    }
+
+    spawnPlayer (params = {}) {
+        // We want the player to spawn in the middle of the cell
+        new Player({
+            ...params,
+            camera_follow: true,
+            layer: GOM.front,
+            x: (params.x * this.cell_size) + this.half_cell_size,
+            y: (params.y * this.cell_size) + this.half_cell_size,
+        });
+    }
+
+    createWall (params = {}) {
+        new Wall({
+            ...params,
+            layer: GOM.front,
+            x: params.x * this.cell_size,
+            y: params.y * this.cell_size,
+            z: 1,
+            width: this.cell_size,
+            height: this.cell_size,
+        });
+    }
+
+    createTree (params = {}) {
+        new Tree({
+            ...params,
+            layer: GOM.front,
+            x: params.x * this.cell_size,
+            y: params.y * this.cell_size,
+            z: 2,
+            width: this.cell_size,
+            height: this.cell_size,
+        });
+    }
+}
+
+module.exports = World;
+
+/***/ }),
+/* 21 */
+/***/ (function(module, exports, __webpack_require__) {
+
+const GOM = __webpack_require__(0);
+const GIM = __webpack_require__(1);
+const GOB = __webpack_require__(2);
+
+const { getRandomInt } = __webpack_require__(3);
+
+// const TREE_IMAGE = require('./tree.png');
+const TREE_TRUNK_IMAGE = __webpack_require__(22);
+const TREE_TOP_IMAGE = __webpack_require__(23);
+
+class Tree extends GOB {
+	constructor (opts = {}) {
+        console.log('SPAWN TREE');
+        super(opts);
+
+        this.type = "tree";
+        this.collidable = true;
+
+		this.width = opts.width;
+        this.height = opts.height;
+
+        this.img_trunk_info = null;
+        this.img_trunk = new Image();
+        this.img_trunk.onload = () => {
+            this.img_trunk_info = {
+                width: this.img_trunk.naturalWidth,
+                height: this.img_trunk.naturalHeight,
+            }
+            this.configureTile();
+        };
+        this.img_trunk.src = TREE_TRUNK_IMAGE;
+
+        this.img_top_info = null;
+        this.img_top = new Image();
+        this.img_top.onload = () => {
+            this.img_top_info = {
+                width: this.img_top.naturalWidth,
+                height: this.img_top.naturalHeight,
+            }
+            this.configureTile();
+        };
+        this.img_top.src = TREE_TOP_IMAGE;
+
+        // We'll want the center of the player and don't want to
+        // calculate this all the time
+        this.half_width = this.width / 2;
+        this.half_height = this.height / 2;
+
+        this.configured = false;
+
+		return this;
+    }
+
+    configureTile () {
+        console.log(this.img_trunk_info);
+        console.log(this.img_top_info);
+
+        if (!this.img_trunk_info || !this.img_top_info) return;
+
+        this.img_trunk_info.half_width = this.img_trunk_info.width / 2;
+        this.img_trunk_info.half_height = this.img_trunk_info.height / 2;
+
+        this.img_top_info.half_width = this.img_top_info.width / 2;
+        this.img_top_info.half_height = this.img_top_info.height / 2;
+
+        const random_area_size = this.width - this.img_trunk_info.width;
+        // random are size is 30
+        const x_mod = getRandomInt(1, random_area_size);
+        const y_mod = getRandomInt(1, random_area_size);
+
+        // I want the pos between 10 and 40
+        const x_pos = this.img_trunk_info.half_width + x_mod;
+        const y_pos = this.img_trunk_info.half_height + y_mod;
+
+        this.img_trunk_info.x = x_pos;
+        this.img_trunk_info.y = y_pos;
+
+        this.img_top_info.x = x_pos;
+        this.img_top_info.y = y_pos;
+
+        this.configured = true;
+    }
+
+    checkCollision (obj) {
+        if (!obj) return null;
+        if (obj.type === 'player') {
+            return this.checkPlayerCollision(obj);
+        }
+    }
+
+    checkPlayerCollision (obj) {
+        if (!this.in_viewport) return;
+        if (obj.velY === 0 && obj.velX === 0) return;
+
+        if (Math.abs(obj.x - this.x) > 100 || Math.abs(obj.y - this.y) > 100) return;
+
+        let next_obj_x = obj.x + obj.velX;
+        let next_obj_y = obj.y + obj.velY;
+
+        let current_obj_bounds = {
+            left: obj.x - obj.half_width,
+            right: obj.x + obj.half_width,
+            top: obj.y - obj.half_height,
+            bottom: obj.y + obj.half_height,
+        }
+        let next_obj_bounds = {
+            left: next_obj_x - obj.half_width,
+            right: next_obj_x + obj.half_width,
+            top: next_obj_y - obj.half_height,
+            bottom: next_obj_y + obj.half_height,
+        };
+        let bounds = {
+            left: this.x + this.img_trunk_info.x - this.img_trunk_info.half_width,
+            right: this.x + this.img_trunk_info.x + this.img_trunk_info.half_width,
+            top: this.y + this.img_trunk_info.y - this.img_trunk_info.half_height,
+            bottom: this.y + this.img_trunk_info.y + this.img_trunk_info.half_height,
+        };
+
+        let modified_vel = {
+            x: 0,
+            y: 0,
+        };
+
+        // We're moving right, and the step of the obj shows a collision
+        if (obj.velX > 0 && (current_obj_bounds.right <= bounds.left && next_obj_bounds.right > bounds.left)) {
+            if (verticalCollision()) {
+                modified_vel.x = -Math.abs(next_obj_bounds.right - bounds.left);
+            }
+        }
+        if (obj.velX < 0 && (current_obj_bounds.left >= bounds.right && next_obj_bounds.left < bounds.right)) {
+            if (verticalCollision()) {
+                modified_vel.x = Math.abs(next_obj_bounds.left - bounds.right);
+            }
+        }
+        if (obj.velY > 0 && (current_obj_bounds.bottom <= bounds.top && next_obj_bounds.bottom > bounds.top)) {
+            if (horizontalCollision()) {
+                modified_vel.y = -Math.abs(next_obj_bounds.bottom - bounds.top);
+            }
+        }
+        if (obj.velY < 0 && (current_obj_bounds.top >= bounds.bottom && next_obj_bounds.top < bounds.bottom)) {
+            if (horizontalCollision()) {
+                modified_vel.y = Math.abs(next_obj_bounds.top - bounds.bottom);
+            }
+        }
+
+        function horizontalCollision () {
+            if (next_obj_bounds.left === bounds.left && next_obj_bounds.right === bounds.right) {
+                return true;
+            }
+            if (next_obj_bounds.left > bounds.left && next_obj_bounds.left < bounds.right ||
+                next_obj_bounds.right > bounds.left && next_obj_bounds.right < bounds.right) {
+                return true;
+            }
+            return false;
+        }
+
+        function verticalCollision () {
+            if (next_obj_bounds.top === bounds.top && next_obj_bounds.bottom === bounds.bottom) {
+                return true;
+            }
+            if (next_obj_bounds.top > bounds.top && next_obj_bounds.top < bounds.bottom ||
+                next_obj_bounds.bottom > bounds.top && next_obj_bounds.bottom < bounds.bottom) {
+                return true;
+            }
+            return false;
+        }
+
+        if (!modified_vel.x && !modified_vel.y) return null;
+        return modified_vel;
+    }
+
+	update () {
+
+    }
+
+	draw () {
+        if (!this.in_viewport || !this.configured) return;
+		this.context.save();
+            // this.context.drawImage(
+            //     this.img_trunk,
+            //     this.x - GOM.camera_offset.x,
+            //     this.y - GOM.camera_offset.y
+            // );
+
+            this.context.drawImage(
+                this.img_trunk,
+                this.x + (this.img_trunk_info.x - this.img_trunk_info.half_width) - GOM.camera_offset.x,
+                this.y + (this.img_trunk_info.y - this.img_trunk_info.half_height) - GOM.camera_offset.y
+            );
+
+
+            this.context.globalAlpha = 0.5;
+            this.context.drawImage(
+                this.img_top,
+                this.x + (this.img_top_info.x - this.img_top_info.half_width) - GOM.camera_offset.x,
+                this.y + (this.img_top_info.y - this.img_top_info.half_height) - GOM.camera_offset.y
+            );
+
+
+        this.context.restore();
+	}
+}
+
+module.exports = Tree;
+
+
+/***/ }),
+/* 22 */
+/***/ (function(module, exports, __webpack_require__) {
+
+module.exports = __webpack_require__.p + "src/js/game/objects/terrain/tree/treetrunk.png";
+
+/***/ }),
+/* 23 */
+/***/ (function(module, exports, __webpack_require__) {
+
+module.exports = __webpack_require__.p + "src/js/game/objects/terrain/tree/treetop.png";
 
 /***/ })
 /******/ ]);

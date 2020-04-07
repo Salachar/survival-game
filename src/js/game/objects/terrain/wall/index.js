@@ -166,6 +166,7 @@ class Wall extends GOB {
     }
 
     checkPlayerCollision (obj) {
+        if (!this.in_viewport) return;
         if (obj.velY === 0 && obj.velX === 0) return;
 
         if (Math.abs(obj.x - this.x) > 100 || Math.abs(obj.y - this.y) > 100) return;
@@ -311,10 +312,11 @@ class Wall extends GOB {
         }
     }
 
-	draw (opts = {}) {
+	draw () {
+        if (!this.in_viewport) return;
 		this.context.save();
-            this.drawRect();
-            // this.drawImage();
+            // this.drawRect();
+            this.drawImage();
         this.context.restore();
         this.drawShotPoints();
 	}

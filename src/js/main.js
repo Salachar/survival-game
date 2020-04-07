@@ -32,7 +32,7 @@ class Game {
 	}
 
 	start () {
-		this.world = new World(REAL_MAP);
+		this.world = new World(DEBUG_MAP);
 	}
 }
 
