@@ -11,6 +11,7 @@ const Wall = require('game/objects/terrain/wall');
 
 const REAL_MAP = require('game/worlds/real');
 const DEBUG_MAP = require('game/worlds/debug');
+const SIMPLE_MAP = require('game/worlds/simple');
 
 const World = require('game/world');
 
@@ -32,7 +33,9 @@ class Game {
 	}
 
 	start () {
+		// this.world = new World(REAL_MAP);
 		this.world = new World(DEBUG_MAP);
+		// this.world = new World(SIMPLE_MAP);
 	}
 }
 

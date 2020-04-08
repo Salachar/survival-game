@@ -1,0 +1,61 @@
+let openings = 0;
+
+if (north) openings += 1;
+if (south) openings += 1;
+if (east) openings += 1;
+if (west) openings += 1;
+
+// 0 and 4 can be returned right away, they are the same
+// not matter the rotation
+if (openings === 0) return {
+    openings: 'none',
+    rotation: 0
+};
+
+if (openings === 4) return {
+    openings: 'four',
+    rotation: 0
+};
+
+// For the other possibilities, we need to know how to rotate
+// the image to line up the openings
+// 1 Opening: default faces east
+// 2 Openings: default faces north west, tube is west/east
+// 3 Openings: default is north west east
+if (openings === 1) {
+    let image_data = {
+        openings: 'one',
+        rotation: 0
+    };
+    if (north) image_data.rotation = 270;
+    if (west) image_data.rotation = 180;
+    if (south) image_data.rotation = 90;
+    return image_data;
+}
+
+if (openings === 2) {
+    let image_data = {
+        openings: 'two',
+        rotation: 0
+    };
+    if (north && east) image_data.rotation = 90;
+    if (east && south) image_data.rotation = 180;
+    if (south && west) image_data.rotation = 270;
+    if (north && south) {
+        image_data.openings = 'two_straight';
+        image_data.rotation = 90;
+    }
+    if (east && west) image_data.openings = 'two_straight';
+    return image_data;
+}
+
+if (openings === 3) { // default is north west east
+    let image_data = {
+        openings: 'three',
+        rotation: 0
+    };
+    if (!west) image_data.rotation = 90;
+    if (!north) image_data.rotation = 180;
+    if (!east) image_data.rotation = 270;
+    return image_data;
+}

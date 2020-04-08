@@ -19,11 +19,6 @@ class Player extends GOB {
 		this.width = 20;
         this.height = 20;
 
-        // We'll want the center of the player and don't want to
-        // calculate this all the time
-        this.half_width = this.width / 2;
-        this.half_height = this.height / 2;
-
         this.shooting_timer = null;
 
 		return this;
@@ -96,14 +91,15 @@ class Player extends GOB {
 		GOM.checkCollisions({
 			obj: this,
 			onCollision: (collision_info, collision_obj) => {
+                // console.log(collision_info, collision_obj);
                 if (collision_info.x && collision_info.y) {
                     hold_object = collision_info;
                     return;
                 }
-                if (collision_info.x) {
+                if (collision_info.x && Math.abs(collision_info.x) > Math.abs(velocity_mods.x)) {
                     velocity_mods.x = collision_info.x;
                 }
-                if (collision_info.y) {
+                if (collision_info.y && Math.abs(collision_info.y) > Math.abs(velocity_mods.y)) {
                     velocity_mods.y = collision_info.y;
                 }
 			}

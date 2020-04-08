@@ -81,7 +81,7 @@
 /******/
 /******/
 /******/ 	// Load entry module and return exports
-/******/ 	return __webpack_require__(__webpack_require__.s = 7);
+/******/ 	return __webpack_require__(__webpack_require__.s = 8);
 /******/ })
 /************************************************************************/
 /******/ ([
@@ -571,6 +571,11 @@ module.exports = new GIM();
 
 const GOM = __webpack_require__(0);
 
+const {
+    checkBoxCollision,
+    checkProjectileBoxCollision
+} = __webpack_require__(11);
+
 const Helpers = __webpack_require__(3);
 const uuid = Helpers.uuid;
 
@@ -580,12 +585,16 @@ class GOB {
 
 		this.camera_follow = opts.camera_follow || false;
 
-		this.x = opts.x || 0;
-		this.y = opts.y || 0;
+		const spawn = opts.spawn || {};
+		this.x = opts.x || spawn.x || 0;
+		this.y = opts.y || spawn.y || 0;
 
 		this.collidable = false;
+		this.collision_type = null; // box or circle
+		this.collision_points = [];
 
 		this.in_viewport = true;
+		this.configured = true;
 
 		this.__props = {};
 
@@ -597,23 +606,19 @@ class GOB {
 		};
 
 		this.__props.dimensions = {
-			width: 0,
+			width: opts.width || 0,
 			half_width: 0,
-			height: 0,
+			height: opts.height || 0,
 			half_height: 0
 		};
-
-		// x and y coords of the center of the object
-		this.__props.center = {
-			x: 0,
-			y: 0
-		}
 
 		this.zOrder = opts.z || 0;
 
 		this.remove = false;
 		this.layer = opts.layer || null;
 		this.context = (this.layer) ? this.layer.backBufferContext : null;
+
+		this.images = {};
 
 		GOM.addGameObject(this);
 	}
@@ -627,6 +632,10 @@ class GOB {
 		return this.__props.dimensions.width;
 	}
 
+	get half_width () {
+		return this.__props.dimensions.half_width;
+	}
+
 	set height (new_height) {
 		this.__props.dimensions.height = new_height;
 		this.__props.dimensions.half_height = new_height / 2;
@@ -636,24 +645,103 @@ class GOB {
 		return this.__props.dimensions.height;
 	}
 
-	set center (new_center) {
-		this.__props.center = new_center;
+	get half_height () {
+		return this.__props.dimensions.half_height;
 	}
 
-	get center () {
+	get position () {
 		return {
-			x: this.x + this.__props.dimensions.half_width,
-			y: this.y + this.__props.dimensions.half_height
+			x: this.x - GOM.camera_offset.x,
+			y: this.y - GOM.camera_offset.y,
 		};
 	}
 
-	checkCollision (opts = {}) {
-		return false;
+	get cornerPosition () {
+		return {
+			x: this.x - this.half_width - GOM.camera_offset.x,
+			y: this.y - this.half_height - GOM.camera_offset.y,
+		};
 	}
 
-	update () {}
+	loadImages (images_obj) {
+		return new Promise((resolve) => {
+			Promise.all(Object.keys(images_obj).map((image_key) => {
+				return this.loadImage(image_key, images_obj[image_key]);
+			})).then((image_results) => {
+				image_results.forEach((image_result) => {
+					if (!image_result) return;
+					this.images[image_result.key] = image_result.image;
+				});
+				resolve(this.images);
+			});
+		});
 
-	draw () {}
+	}
+
+	loadImage (image_key, image_source) {
+		return new Promise((resolve) => {
+			const img = new Image();
+			img.onload = () => {
+				resolve({
+					key: image_key,
+					image: img
+				});
+			};
+			img.onerror = () => {
+				resolve(null);
+			};
+			img.src = image_source;
+		});
+	}
+
+	configureGameObject () {
+
+	}
+
+	getBounds () {
+        return {
+            left: this.x - this.half_width,
+            right: this.x + this.half_width,
+            top: this.y - this.half_height,
+            bottom: this.y + this.half_height,
+        };
+	}
+
+	getBoxCollisionSegments () {
+        const { top, right, bottom, left } = this.getBounds();
+        const segments = [
+            { // TOP
+                p1: { x: left, y: top },
+                p2: { x: right, y: top },
+            },
+            { // RIGHT
+                p1: { x: right, y: top },
+                p2: { x: right, y: bottom },
+            },
+            { // BOTTOM
+                p1: { x: left, y: bottom },
+                p2: { x: right, y: bottom },
+            },
+            { // LEFT
+                p1: { x: left, y: top },
+                p2: { x: left, y: bottom },
+            },
+        ];
+        return segments;
+	}
+
+	checkCollision (obj) {
+		if (!obj || !this.collidable || !this.configured) return false;
+		if (this.collision_type === 'box') {
+			if (obj.type === 'player') {
+				return checkBoxCollision(obj, this);
+			}
+			if (obj.type === 'projectile') {
+				return checkProjectileBoxCollision(obj, this);
+			}
+		}
+		return false;
+	}
 
 	keyPress () {}
 
@@ -686,6 +774,41 @@ class GOB {
 	shutdown () {
 		this.remove = true;
 	}
+
+	update () {}
+
+	drawCollisionPoints () {
+        for (var i = 0; i < this.collision_points.length; ++i) {
+            const p = this.collision_points[i];
+            this.context.beginPath();
+            this.context.rect(
+                p.x - GOM.camera_offset.x - 5,
+                p.y - GOM.camera_offset.y - 5,
+                10,
+                10
+            );
+            this.context.fillStyle = '#FF0000';
+            this.context.fill();
+        }
+	}
+
+	drawImage () {
+		const rotation = (this.image_data || {}).rotation || 0;
+		this.context.save();
+			if (rotation) {
+				this.context.translate(this.position.x, this.position.y);
+				this.context.rotate(this.image_data.rotation);
+				this.context.translate(-this.position.x, -this.position.y);
+			}
+			this.context.drawImage(
+				this.images.main,
+				this.cornerPosition.x,
+				this.cornerPosition.y
+			);
+		this.context.restore();
+	}
+
+	draw () {}
 }
 
 module.exports = GOB;
@@ -905,649 +1028,6 @@ module.exports = Projectile;
 
 /***/ }),
 /* 5 */
-/***/ (function(module, exports, __webpack_require__) {
-
-const GOM = __webpack_require__(0);
-const GIM = __webpack_require__(1);
-const GOB = __webpack_require__(2);
-
-const Projectile = __webpack_require__(4);
-
-class Player extends GOB {
-	constructor (opts = {}) {
-		super(opts);
-
-        this.type = "player";
-
-        this.velX = 0;
-        this.velY = 0;
-
-        this.speed = 6;
-        this.speed_diagonal = Math.ceil(this.speed * 0.715);
-
-		this.width = 20;
-        this.height = 20;
-
-        // We'll want the center of the player and don't want to
-        // calculate this all the time
-        this.half_width = this.width / 2;
-        this.half_height = this.height / 2;
-
-        this.shooting_timer = null;
-
-		return this;
-    }
-
-    checkPlayerMovement () {
-        if (GIM.isKeyDown('W')) {
-            this.velY = -this.speed;
-            if (GIM.isKeyDown('A')) {
-                this.velX = -this.speed_diagonal;
-                this.velY = -this.speed_diagonal;
-            }
-            if (GIM.isKeyDown('D')) {
-                this.velX = this.speed_diagonal;
-                this.velY = -this.speed_diagonal;
-            }
-        }
-
-        if (GIM.isKeyDown('S')) {
-            this.velY = this.speed;
-            if (GIM.isKeyDown('A')) {
-                this.velX = -this.speed_diagonal;
-                this.velY = this.speed_diagonal;
-            }
-            if (GIM.isKeyDown('D')) {
-                this.velX = this.speed_diagonal;
-                this.velY = this.speed_diagonal;
-            }
-        }
-
-        if (GIM.isKeyDown('A')) {
-            this.velX = -this.speed;
-            if (GIM.isKeyDown('W')) {
-                this.velX = -this.speed_diagonal;
-                this.velY = -this.speed_diagonal;
-            }
-            if (GIM.isKeyDown('S')) {
-                this.velX = -this.speed_diagonal;
-                this.velY = this.speed_diagonal;
-            }
-        }
-
-        if (GIM.isKeyDown('D')) {
-            this.velX = this.speed;
-            if (GIM.isKeyDown('W')) {
-                this.velX = this.speed_diagonal;
-                this.velY = -this.speed_diagonal;
-            }
-            if (GIM.isKeyDown('S')) {
-                this.velX = this.speed_diagonal;
-                this.velY = this.speed_diagonal;
-            }
-        }
-
-        if (!GIM.isKeyDown('W S')) {
-            this.velY = 0;
-        }
-        if (!GIM.isKeyDown('A D')) {
-            this.velX = 0;
-        }
-    }
-
-	update () {
-        if (this.velX === 0 && this.velY == 0) return;
-        let velocity_mods = {
-            x: 0,
-            y: 0
-        };
-        let hold_object = null;
-		GOM.checkCollisions({
-			obj: this,
-			onCollision: (collision_info, collision_obj) => {
-                if (collision_info.x && collision_info.y) {
-                    hold_object = collision_info;
-                    return;
-                }
-                if (collision_info.x) {
-                    velocity_mods.x = collision_info.x;
-                }
-                if (collision_info.y) {
-                    velocity_mods.y = collision_info.y;
-                }
-			}
-        });
-
-        if (hold_object && !velocity_mods.x && !velocity_mods.y) {
-            velocity_mods.x = hold_object.x;
-            velocity_mods.y = hold_object.y;
-        }
-
-        this.x = Math.round(this.x + this.velX + velocity_mods.x);
-		this.y = Math.round(this.y + this.velY + velocity_mods.y);
-    }
-
-    keyDown (key) {
-        this.checkPlayerMovement();
-    }
-
-    keyUp (key) {
-        // if (key === 'UP' ||  key === 'W') {
-        //     this.velY = 0;
-        // }
-        // if (key === 'DOWN' ||  key === 'S') {
-        //     this.velY = 0;
-        // }
-        // if (key === 'LEFT' ||  key === 'A') {
-        //     this.velX = 0;
-        // }
-        // if (key === 'RIGHT' ||  key === 'D') {
-        //     this.velX = 0;
-        // }
-        this.checkPlayerMovement();
-    }
-
-    keyPress () {
-        // console.log('press');
-    }
-
-    mDown (mouse) {
-        this.fireWeapon();
-        this.shooting_timer = setInterval(() => {
-            this.fireWeapon();
-        }, 100);
-    }
-
-    mUp (mouse) {
-        clearInterval(this.shooting_timer);
-        this.shooting_timer = null;
-    }
-
-    fireWeapon (mouse) {
-        new Projectile({
-            layer: GOM.front,
-            x: this.x,
-            y: this.y,
-            aim_x: GIM.mouse.x + GOM.camera_offset.x,
-            aim_y: GIM.mouse.y + GOM.camera_offset.y,
-        });
-    }
-
-	draw (opts = {}) {
-		this.context.save();
-            this.context.beginPath();
-			this.context.rect(
-                this.x - GOM.camera_offset.x - this.half_width,
-                this.y - GOM.camera_offset.y - this.half_height,
-                this.width,
-                this.height
-            );
-			this.context.fillStyle = '#0000FF';
-			this.context.fill();
-		this.context.restore();
-	}
-}
-
-module.exports = Player;
-
-
-/***/ }),
-/* 6 */
-/***/ (function(module, exports, __webpack_require__) {
-
-const GOM = __webpack_require__(0);
-const GIM = __webpack_require__(1);
-const GOB = __webpack_require__(2);
-
-const { getIntersection, degreesToRadians } = __webpack_require__(11);
-
-const WALL_IMAGES = {
-    none: __webpack_require__(12),
-    one: __webpack_require__(13),
-    two: __webpack_require__(14),
-    two_straight: __webpack_require__(15),
-    three: __webpack_require__(16),
-    four: __webpack_require__(17),
-}
-
-class Wall extends GOB {
-	constructor (opts = {}) {
-        super(opts);
-
-        this.type = "wall";
-        this.collidable = true;
-
-		this.width = opts.width;
-        this.height = opts.height;
-
-        this.collision_points = [];
-
-        this.img = new Image();
-        this.image_data = this.determineImage(opts.neighbors);
-        this.image_data.rotation = degreesToRadians(this.image_data.rotation);
-        this.img.src = WALL_IMAGES[this.image_data.openings];
-
-        // We'll want the center of the player and don't want to
-        // calculate this all the time
-        this.half_width = this.width / 2;
-        this.half_height = this.height / 2;
-
-        this.segments = this.generateSegments();
-
-		return this;
-    }
-
-    determineImage (neighbors = {}) {2
-        // const { north, south, east, west } = neighbors;
-        const north = neighbors.north === 'WALL' || neighbors.north === null;
-        const south = neighbors.south === 'WALL' || neighbors.south === null;
-        const east = neighbors.east === 'WALL' || neighbors.east === null;
-        const west = neighbors.west === 'WALL' || neighbors.west === null;
-
-        let openings = 0;
-
-        if (north) openings += 1;
-        if (south) openings += 1;
-        if (east) openings += 1;
-        if (west) openings += 1;
-
-        // 0 and 4 can be returned right away, they are the same
-        // not matter the rotation
-        if (openings === 0) return {
-            openings: 'none',
-            rotation: 0
-        };
-
-        if (openings === 4) return {
-            openings: 'four',
-            rotation: 0
-        };
-
-        // For the other possibilities, we need to know how to rotate
-        // the image to line up the openings
-        // 1 Opening: default faces east
-        // 2 Openings: default faces north west, tube is west/east
-        // 3 Openings: default is north west east
-        if (openings === 1) {
-            let image_data = {
-                openings: 'one',
-                rotation: 0
-            };
-            if (north) image_data.rotation = 270;
-            if (west) image_data.rotation = 180;
-            if (south) image_data.rotation = 90;
-            return image_data;
-        }
-
-        if (openings === 2) {
-            let image_data = {
-                openings: 'two',
-                rotation: 0
-            };
-            if (north && east) image_data.rotation = 90;
-            if (east && south) image_data.rotation = 180;
-            if (south && west) image_data.rotation = 270;
-            if (north && south) {
-                image_data.openings = 'two_straight';
-                image_data.rotation = 90;
-            }
-            if (east && west) image_data.openings = 'two_straight';
-            return image_data;
-        }
-
-        if (openings === 3) { // default is north west east
-            let image_data = {
-                openings: 'three',
-                rotation: 0
-            };
-            if (!west) image_data.rotation = 90;
-            if (!north) image_data.rotation = 180;
-            if (!east) image_data.rotation = 270;
-            return image_data;
-        }
-    }
-
-    generateSegments () {
-        return [
-            { // TOP
-                p1: {
-                    x: this.x,
-                    y: this.y,
-                },
-                p2: {
-                    x: this.x + this.width,
-                    y: this.y,
-                },
-            },
-            { // RIGHT
-                p1: {
-                    x: this.x + this.width,
-                    y: this.y,
-                },
-                p2: {
-                    x: this.x + this.width,
-                    y: this.y + this.height,
-                },
-            },
-            { // BOTTOM
-                p1: {
-                    x: this.x,
-                    y: this.y + this.height,
-                },
-                p2: {
-                    x: this.x + this.width,
-                    y: this.y + this.height,
-                },
-            },
-            { // LEFT
-                p1: {
-                    x: this.x,
-                    y: this.y,
-                },
-                p2: {
-                    x: this.x,
-                    y: this.y + this.height,
-                },
-            },
-        ]
-    }
-
-    checkCollision (obj) {
-        if (!obj) return null;
-        if (obj.type === 'player') {
-            return this.checkPlayerCollision(obj);
-        }
-        if (obj.type === 'projectile') {
-            return this.checkProjectileCollision(obj);
-        }
-    }
-
-    checkPlayerCollision (obj) {
-        if (!this.in_viewport) return;
-        if (obj.velY === 0 && obj.velX === 0) return;
-
-        if (Math.abs(obj.x - this.x) > 100 || Math.abs(obj.y - this.y) > 100) return;
-
-        let next_obj_x = obj.x + obj.velX;
-        let next_obj_y = obj.y + obj.velY;
-
-        let current_obj_bounds = {
-            left: obj.x - obj.half_width,
-            right: obj.x + obj.half_width,
-            top: obj.y - obj.half_height,
-            bottom: obj.y + obj.half_height,
-        }
-        let next_obj_bounds = {
-            left: next_obj_x - obj.half_width,
-            right: next_obj_x + obj.half_width,
-            top: next_obj_y - obj.half_height,
-            bottom: next_obj_y + obj.half_height,
-        };
-        let bounds = {
-            left: this.x,
-            right: this.x + this.width,
-            top: this.y,
-            bottom: this.y + this.height,
-        };
-
-        let modified_vel = {
-            x: 0,
-            y: 0,
-        };
-
-        // We're moving right, and the step of the obj shows a collision
-        if (obj.velX > 0 && (current_obj_bounds.right <= bounds.left && next_obj_bounds.right > bounds.left)) {
-            if (verticalCollision()) {
-                modified_vel.x = -Math.abs(next_obj_bounds.right - bounds.left);
-            }
-        }
-        if (obj.velX < 0 && (current_obj_bounds.left >= bounds.right && next_obj_bounds.left < bounds.right)) {
-            if (verticalCollision()) {
-                modified_vel.x = Math.abs(next_obj_bounds.left - bounds.right);
-            }
-        }
-        if (obj.velY > 0 && (current_obj_bounds.bottom <= bounds.top && next_obj_bounds.bottom > bounds.top)) {
-            if (horizontalCollision()) {
-                modified_vel.y = -Math.abs(next_obj_bounds.bottom - bounds.top);
-            }
-        }
-        if (obj.velY < 0 && (current_obj_bounds.top >= bounds.bottom && next_obj_bounds.top < bounds.bottom)) {
-            if (horizontalCollision()) {
-                modified_vel.y = Math.abs(next_obj_bounds.top - bounds.bottom);
-            }
-        }
-
-        function horizontalCollision () {
-            if (next_obj_bounds.left > bounds.left && next_obj_bounds.left < bounds.right ||
-                next_obj_bounds.right > bounds.left && next_obj_bounds.right < bounds.right) {
-                return true;
-            }
-            return false;
-        }
-
-        function verticalCollision () {
-            if (next_obj_bounds.top > bounds.top && next_obj_bounds.top < bounds.bottom ||
-                next_obj_bounds.bottom > bounds.top && next_obj_bounds.bottom < bounds.bottom) {
-                return true;
-            }
-            return false;
-        }
-
-        if (!modified_vel.x && !modified_vel.y) return null;
-        return modified_vel;
-    }
-
-    checkProjectileCollision (projectile) {
-        this.collision_points = [];
-        for (let i = 0; i < this.segments.length; ++i) {
-            const seg = this.segments[i];
-            const projectile_vector = {
-                px : projectile.x,
-                py : projectile.y,
-                dx : projectile.aim_point.x - projectile.x,
-                dy : projectile.aim_point.y - projectile.y,
-            };
-            const wall_segment = {
-                px : seg.p1.x,
-                py : seg.p1.y,
-                dx : seg.p2.x - seg.p1.x,
-                dy : seg.p2.y - seg.p1.y,
-            };
-            const info = getIntersection(projectile_vector, wall_segment);
-            if (info && info.t1 >= 0 && info.t2 >= 0 && info.t2 <= 1) {
-                this.collision_points.push(info);
-            }
-        }
-        this.layer.update = true;
-        return (this.collision_points.length) ? this.collision_points : null;
-    }
-
-	update () {
-
-    }
-
-    drawRect () {
-        this.context.beginPath();
-        this.context.rect(
-            this.x - GOM.camera_offset.x,
-            this.y - GOM.camera_offset.y,
-            this.width,
-            this.height
-        );
-        this.context.fillStyle = '#FFFFFF';
-        this.context.fill();
-    }
-
-    drawImage () {
-        const center = {
-            x: this.x - GOM.camera_offset.x + (this.width / 2),
-            y: this.y - GOM.camera_offset.y + (this.height / 2),
-        };
-        this.context.translate(center.x, center.y);
-        this.context.rotate(this.image_data.rotation);
-        this.context.translate(-center.x, -center.y);
-
-        this.context.drawImage(
-            this.img,
-            this.x - GOM.camera_offset.x,
-            this.y - GOM.camera_offset.y
-        );
-    }
-
-    drawShotPoints () {
-        for (var i = 0; i < this.collision_points.length; ++i) {
-            const p = this.collision_points[i];
-            this.context.beginPath();
-            this.context.rect(
-                p.x - GOM.camera_offset.x - 5,
-                p.y - GOM.camera_offset.y - 5,
-                10,
-                10
-            );
-            this.context.fillStyle = '#FF0000';
-            this.context.fill();
-        }
-    }
-
-	draw () {
-        if (!this.in_viewport) return;
-		this.context.save();
-            // this.drawRect();
-            this.drawImage();
-        this.context.restore();
-        this.drawShotPoints();
-	}
-}
-
-module.exports = Wall;
-
-
-/***/ }),
-/* 7 */
-/***/ (function(module, exports, __webpack_require__) {
-
-const GOM = __webpack_require__(0);
-const GIM = __webpack_require__(1);
-
-const Menu = __webpack_require__(8);
-
-const GI = __webpack_require__(9);
-const CONFIG = __webpack_require__(10);
-
-const Player = __webpack_require__(5);
-const Wall = __webpack_require__(6);
-
-const REAL_MAP = __webpack_require__(18);
-const DEBUG_MAP = __webpack_require__(19);
-
-const World = __webpack_require__(20);
-
-const APP = {};
-window.APP = APP;
-
-class Game {
-	constructor () {
-		this.world = null;
-
-		this.initialize();
-		this.start();
-	}
-
-	initialize () {
-		GOM.shutdownAll();
-		GOM.clearAllContexts();
-		GIM.register(GI);
-	}
-
-	start () {
-		this.world = new World(DEBUG_MAP);
-	}
-}
-
-window.onload = () => {
-    // APP is only used for debugging purposes for easy inspector access
-    APP.Game = new Game();
-	APP.GOM = GOM;
-	APP.GIM = GIM;
-}
-
-window.onresize = () => {
-	GOM.resize();
-}
-
-
-/***/ }),
-/* 8 */
-/***/ (function(module, exports, __webpack_require__) {
-
-const GOM = __webpack_require__(0);
-
-class Menu {
-    constructor () {
-        this.setEvents();
-    }
-
-    setEvents () {
-
-    }
-}
-
-module.exports = new Menu();
-
-
-/***/ }),
-/* 9 */
-/***/ (function(module, exports, __webpack_require__) {
-
-const GOM = __webpack_require__(0);
-const GIM = __webpack_require__(1);
-
-const Projectile = __webpack_require__(4);
-
-const { getRandomInt } = __webpack_require__(3);
-
-class GI {
-    constructor () {
-
-    }
-
-    mClick (mouse) {
-
-    }
-
-    mUp (mouse) {
-
-    }
-
-    mDown (mouse) {
-
-    }
-
-    mLeave (mouse) {
-
-    }
-}
-
-module.exports = new GI();
-
-
-/***/ }),
-/* 10 */
-/***/ (function(module, exports) {
-
-class CONFIG {
-    constructor () {
-        this.__props = {
-
-        };
-    }
-}
-
-module.exports = new CONFIG();
-
-
-/***/ }),
-/* 11 */
 /***/ (function(module, exports) {
 
 const Helpers = {
@@ -1777,43 +1257,880 @@ module.exports = Helpers;
 
 
 /***/ }),
-/* 12 */
+/* 6 */
 /***/ (function(module, exports, __webpack_require__) {
 
-module.exports = __webpack_require__.p + "src/js/game/objects/terrain/wall/wall_open_none.png";
+const GOM = __webpack_require__(0);
+const GIM = __webpack_require__(1);
+const GOB = __webpack_require__(2);
+
+const Projectile = __webpack_require__(4);
+
+class Player extends GOB {
+	constructor (opts = {}) {
+		super(opts);
+
+        this.type = "player";
+
+        this.velX = 0;
+        this.velY = 0;
+
+        this.speed = 6;
+        this.speed_diagonal = Math.ceil(this.speed * 0.715);
+
+		this.width = 20;
+        this.height = 20;
+
+        this.shooting_timer = null;
+
+		return this;
+    }
+
+    checkPlayerMovement () {
+        if (GIM.isKeyDown('W')) {
+            this.velY = -this.speed;
+            if (GIM.isKeyDown('A')) {
+                this.velX = -this.speed_diagonal;
+                this.velY = -this.speed_diagonal;
+            }
+            if (GIM.isKeyDown('D')) {
+                this.velX = this.speed_diagonal;
+                this.velY = -this.speed_diagonal;
+            }
+        }
+
+        if (GIM.isKeyDown('S')) {
+            this.velY = this.speed;
+            if (GIM.isKeyDown('A')) {
+                this.velX = -this.speed_diagonal;
+                this.velY = this.speed_diagonal;
+            }
+            if (GIM.isKeyDown('D')) {
+                this.velX = this.speed_diagonal;
+                this.velY = this.speed_diagonal;
+            }
+        }
+
+        if (GIM.isKeyDown('A')) {
+            this.velX = -this.speed;
+            if (GIM.isKeyDown('W')) {
+                this.velX = -this.speed_diagonal;
+                this.velY = -this.speed_diagonal;
+            }
+            if (GIM.isKeyDown('S')) {
+                this.velX = -this.speed_diagonal;
+                this.velY = this.speed_diagonal;
+            }
+        }
+
+        if (GIM.isKeyDown('D')) {
+            this.velX = this.speed;
+            if (GIM.isKeyDown('W')) {
+                this.velX = this.speed_diagonal;
+                this.velY = -this.speed_diagonal;
+            }
+            if (GIM.isKeyDown('S')) {
+                this.velX = this.speed_diagonal;
+                this.velY = this.speed_diagonal;
+            }
+        }
+
+        if (!GIM.isKeyDown('W S')) {
+            this.velY = 0;
+        }
+        if (!GIM.isKeyDown('A D')) {
+            this.velX = 0;
+        }
+    }
+
+	update () {
+        if (this.velX === 0 && this.velY == 0) return;
+        let velocity_mods = {
+            x: 0,
+            y: 0
+        };
+        let hold_object = null;
+		GOM.checkCollisions({
+			obj: this,
+			onCollision: (collision_info, collision_obj) => {
+                // console.log(collision_info, collision_obj);
+                if (collision_info.x && collision_info.y) {
+                    hold_object = collision_info;
+                    return;
+                }
+                if (collision_info.x && Math.abs(collision_info.x) > Math.abs(velocity_mods.x)) {
+                    velocity_mods.x = collision_info.x;
+                }
+                if (collision_info.y && Math.abs(collision_info.y) > Math.abs(velocity_mods.y)) {
+                    velocity_mods.y = collision_info.y;
+                }
+			}
+        });
+
+        if (hold_object && !velocity_mods.x && !velocity_mods.y) {
+            velocity_mods.x = hold_object.x;
+            velocity_mods.y = hold_object.y;
+        }
+
+        this.x = Math.round(this.x + this.velX + velocity_mods.x);
+		this.y = Math.round(this.y + this.velY + velocity_mods.y);
+    }
+
+    keyDown (key) {
+        this.checkPlayerMovement();
+    }
+
+    keyUp (key) {
+        // if (key === 'UP' ||  key === 'W') {
+        //     this.velY = 0;
+        // }
+        // if (key === 'DOWN' ||  key === 'S') {
+        //     this.velY = 0;
+        // }
+        // if (key === 'LEFT' ||  key === 'A') {
+        //     this.velX = 0;
+        // }
+        // if (key === 'RIGHT' ||  key === 'D') {
+        //     this.velX = 0;
+        // }
+        this.checkPlayerMovement();
+    }
+
+    keyPress () {
+        // console.log('press');
+    }
+
+    mDown (mouse) {
+        this.fireWeapon();
+        this.shooting_timer = setInterval(() => {
+            this.fireWeapon();
+        }, 100);
+    }
+
+    mUp (mouse) {
+        clearInterval(this.shooting_timer);
+        this.shooting_timer = null;
+    }
+
+    fireWeapon (mouse) {
+        new Projectile({
+            layer: GOM.front,
+            x: this.x,
+            y: this.y,
+            aim_x: GIM.mouse.x + GOM.camera_offset.x,
+            aim_y: GIM.mouse.y + GOM.camera_offset.y,
+        });
+    }
+
+	draw (opts = {}) {
+		this.context.save();
+            this.context.beginPath();
+			this.context.rect(
+                this.x - GOM.camera_offset.x - this.half_width,
+                this.y - GOM.camera_offset.y - this.half_height,
+                this.width,
+                this.height
+            );
+			this.context.fillStyle = '#0000FF';
+			this.context.fill();
+		this.context.restore();
+	}
+}
+
+module.exports = Player;
+
+
+/***/ }),
+/* 7 */
+/***/ (function(module, exports, __webpack_require__) {
+
+const GOM = __webpack_require__(0);
+const GIM = __webpack_require__(1);
+const GOB = __webpack_require__(2);
+
+const { degreesToRadians } = __webpack_require__(5);
+const { getSpritePosition } = __webpack_require__(13);
+
+const WALL_IMAGES = {
+    none: __webpack_require__(15),
+    one: __webpack_require__(16),
+    two: __webpack_require__(17),
+    two_straight: __webpack_require__(18),
+    three: __webpack_require__(19),
+    four: __webpack_require__(20),
+}
+
+const WALL_SPRITE_SHEET = __webpack_require__(21);
+
+class Wall extends GOB {
+	constructor (opts = {}) {
+        super(opts);
+
+        this.type = 'wall';
+        this.configured = false;
+        this.collidable = true;
+        this.collision_type = 'box';
+
+        // this.image_data = this.determineImage(opts.neighbors);
+        // this.image_data.rotation = degreesToRadians(this.image_data.rotation);
+
+        this.determineImage(opts.neighbors);
+
+        this.loadImages({
+            main: WALL_SPRITE_SHEET,
+        }).then((images) => {
+            this.configureObject();
+        });
+
+		return this;
+    }
+
+    configureObject () {
+        // this.width = this.images.main.naturalWidth;
+        // this.height = this.images.main.naturalHeight;
+        this.width = 50;
+        this.height = 50;
+        this.configured = true;
+    }
+
+    determineImage (neighbors = {}) {
+        let wall_neighbors = {};
+        let openings = 0;
+        Object.keys(neighbors).forEach((nd) => { // nd -> neighbor direction
+            let wall = neighbors[nd] === 'WALL' || neighbors[nd] === null || false;
+            wall_neighbors[nd] = wall;
+            // only count cardinal openings
+            if (!nd.match(/_/) && wall) openings += 1;
+        });
+
+        this.sprite_index = getSpritePosition(wall_neighbors, openings);
+    }
+
+	draw () {
+        if (!this.in_viewport || !this.configured || !this.sprite_index) return;
+        // this.drawImage();
+        const cell_size = 50;
+
+		this.context.save();
+
+			this.context.drawImage(
+                this.images.main,
+                this.sprite_index.x * cell_size,
+                this.sprite_index.y * cell_size,
+                cell_size,
+                cell_size,
+				this.cornerPosition.x,
+                this.cornerPosition.y,
+                cell_size,
+                cell_size
+			);
+		this.context.restore();
+        // this.drawCollisionPoints();
+	}
+}
+
+module.exports = Wall;
+
+
+/***/ }),
+/* 8 */
+/***/ (function(module, exports, __webpack_require__) {
+
+const GOM = __webpack_require__(0);
+const GIM = __webpack_require__(1);
+
+const Menu = __webpack_require__(9);
+
+const GI = __webpack_require__(10);
+const CONFIG = __webpack_require__(12);
+
+const Player = __webpack_require__(6);
+const Wall = __webpack_require__(7);
+
+const REAL_MAP = __webpack_require__(22);
+const DEBUG_MAP = __webpack_require__(23);
+const SIMPLE_MAP = __webpack_require__(24);
+
+const World = __webpack_require__(25);
+
+const APP = {};
+window.APP = APP;
+
+class Game {
+	constructor () {
+		this.world = null;
+
+		this.initialize();
+		this.start();
+	}
+
+	initialize () {
+		GOM.shutdownAll();
+		GOM.clearAllContexts();
+		GIM.register(GI);
+	}
+
+	start () {
+		// this.world = new World(REAL_MAP);
+		this.world = new World(DEBUG_MAP);
+		// this.world = new World(SIMPLE_MAP);
+	}
+}
+
+window.onload = () => {
+    // APP is only used for debugging purposes for easy inspector access
+    APP.Game = new Game();
+	APP.GOM = GOM;
+	APP.GIM = GIM;
+}
+
+window.onresize = () => {
+	GOM.resize();
+}
+
+
+/***/ }),
+/* 9 */
+/***/ (function(module, exports, __webpack_require__) {
+
+const GOM = __webpack_require__(0);
+
+class Menu {
+    constructor () {
+        this.setEvents();
+    }
+
+    setEvents () {
+
+    }
+}
+
+module.exports = new Menu();
+
+
+/***/ }),
+/* 10 */
+/***/ (function(module, exports, __webpack_require__) {
+
+const GOM = __webpack_require__(0);
+const GIM = __webpack_require__(1);
+
+const Projectile = __webpack_require__(4);
+
+const { getRandomInt } = __webpack_require__(3);
+
+class GI {
+    constructor () {
+
+    }
+
+    mClick (mouse) {
+
+    }
+
+    mUp (mouse) {
+
+    }
+
+    mDown (mouse) {
+
+    }
+
+    mLeave (mouse) {
+
+    }
+}
+
+module.exports = new GI();
+
+
+/***/ }),
+/* 11 */
+/***/ (function(module, exports, __webpack_require__) {
+
+const { getIntersection } = __webpack_require__(5);
+
+function checkBoxCollision (obj1, obj2) {
+    // TODO: change to flag concerning checks outside
+    // of viewport. Maybe I want to shoot an off screen enemy
+    if (!obj1.in_viewport || !obj2.in_viewport) return;
+
+    // obj1 is the moving object, if its velocity is 0
+    // we don't need to check anything
+    if (obj1.velY === 0 && obj1.velX === 0) return;
+
+    // TODO: 100px is a gross apromixation of distance where things are guaranteed
+    // to not collide at the moment, but it should be less magic
+    if (Math.abs(obj1.x - obj2.x) > 100 || Math.abs(obj1.y - obj2.y) > 100) return;
+
+    let obj1_current_bounds = {
+        left: obj1.x - obj1.half_width,
+        right: obj1.x + obj1.half_width,
+        top: obj1.y - obj1.half_height,
+        bottom: obj1.y + obj1.half_height,
+    }
+
+    let obj1_next_bounds = {
+        left: obj1.x + obj1.velX - obj1.half_width,
+        right: obj1.x + obj1.velX + obj1.half_width,
+        top: obj1.y + obj1.velY - obj1.half_height,
+        bottom: obj1.y + obj1.velY + obj1.half_height,
+    };
+
+    let obj2_current_bounds = obj2.getBounds();
+
+    // This will tell us how much to offset the moving objects step
+    // so that's it not put into the object, but put right next to it
+    let modified_vel = {
+        x: 0,
+        y: 0,
+    };
+
+    // Moving Right
+    if (obj1.velX > 0 && (obj1_current_bounds.right <= obj2_current_bounds.left && obj1_next_bounds.right > obj2_current_bounds.left)) {
+        if (verticalCollision()) {
+            modified_vel.x = -Math.abs(obj1_next_bounds.right - obj2_current_bounds.left);
+        }
+    }
+
+    // Moving Left
+    if (obj1.velX < 0 && (obj1_current_bounds.left >= obj2_current_bounds.right && obj1_next_bounds.left < obj2_current_bounds.right)) {
+        if (verticalCollision()) {
+            modified_vel.x = Math.abs(obj1_next_bounds.left - obj2_current_bounds.right);
+        }
+    }
+
+    // Moving  Down
+    if (obj1.velY > 0 && (obj1_current_bounds.bottom <= obj2_current_bounds.top && obj1_next_bounds.bottom > obj2_current_bounds.top)) {
+        if (horizontalCollision()) {
+            modified_vel.y = -Math.abs(obj1_next_bounds.bottom - obj2_current_bounds.top);
+        }
+    }
+
+    // Moving Up
+    if (obj1.velY < 0 && (obj1_current_bounds.top >= obj2_current_bounds.bottom && obj1_next_bounds.top < obj2_current_bounds.bottom)) {
+        if (horizontalCollision()) {
+            modified_vel.y = Math.abs(obj1_next_bounds.top - obj2_current_bounds.bottom);
+        }
+    }
+
+    function horizontalCollision () {
+        if (obj1_next_bounds.left > obj2_current_bounds.left && obj1_next_bounds.left < obj2_current_bounds.right ||
+            obj1_next_bounds.right > obj2_current_bounds.left && obj1_next_bounds.right < obj2_current_bounds.right) {
+            return true;
+        }
+        return false;
+    }
+
+    function verticalCollision () {
+        if (obj1_next_bounds.top > obj2_current_bounds.top && obj1_next_bounds.top < obj2_current_bounds.bottom ||
+            obj1_next_bounds.bottom > obj2_current_bounds.top && obj1_next_bounds.bottom < obj2_current_bounds.bottom) {
+            return true;
+        }
+        return false;
+    }
+
+    if (!modified_vel.x && !modified_vel.y) return null;
+    return modified_vel;
+}
+
+function checkProjectileBoxCollision (projectile, obj) {
+    obj.collision_points = [];
+    const segments = obj.getBoxCollisionSegments();
+    for (let i = 0; i < segments.length; ++i) {
+        const seg = segments[i];
+        const projectile_vector = {
+            px : projectile.x,
+            py : projectile.y,
+            dx : projectile.aim_point.x - projectile.x,
+            dy : projectile.aim_point.y - projectile.y,
+        };
+        const wall_segment = {
+            px : seg.p1.x,
+            py : seg.p1.y,
+            dx : seg.p2.x - seg.p1.x,
+            dy : seg.p2.y - seg.p1.y,
+        };
+        const info = getIntersection(projectile_vector, wall_segment);
+        if (info && info.t1 >= 0 && info.t2 >= 0 && info.t2 <= 1) {
+            obj.collision_points.push(info);
+        }
+    }
+    // everything is currently on front
+    // obj.layer.update = true;
+    return (obj.collision_points.length) ? obj.collision_points : null;
+}
+
+module.exports = {
+    checkBoxCollision,
+    checkProjectileBoxCollision,
+};
+
+/***/ }),
+/* 12 */
+/***/ (function(module, exports) {
+
+class CONFIG {
+    constructor () {
+        this.__props = {
+
+        };
+    }
+}
+
+module.exports = new CONFIG();
+
 
 /***/ }),
 /* 13 */
 /***/ (function(module, exports, __webpack_require__) {
 
-module.exports = __webpack_require__.p + "src/js/game/objects/terrain/wall/wall_open_one.png";
+const full_iso_sprite_map = __webpack_require__(14);
+
+function getSpritePosition (neighbors, openings) {
+    switch (openings) {
+        case 0:
+            return determineNoneSideImage(neighbors);
+        case 1:
+            return determineOneSideImage(neighbors);
+        case 2:
+            return determineTwoSideImage(neighbors);
+        case 3:
+            return determineThreeSideImage(neighbors);
+        case 4:
+            return determineFourSideImage(neighbors);
+    }
+}
+
+function determineNoneSideImage () {
+    // clip the none side sprite
+    return full_iso_sprite_map.none.f;
+}
+
+function determineOneSideImage (neighbors) {
+    // one side doesnt give a shit about diagonals
+    const { north, south, east, west } = neighbors;
+    if (north) return full_iso_sprite_map.one.n;
+    if (south) return full_iso_sprite_map.one.s;
+    if (east) return full_iso_sprite_map.one.e;
+    if (west) return full_iso_sprite_map.one.w;
+}
+
+function determineTwoSideImage (neighbors) {
+    // two sided cares about the diagonal between two adjacent openings
+    const { north, south, east, west } = neighbors;
+    const { north_east, north_west, south_east, south_west } = neighbors;
+    const map = full_iso_sprite_map.two;
+
+    if (north && south) {
+        return map.v; // clip vertical tube
+    }
+    if (east && west) {
+        return map.h; // clip horizontal tube
+    }
+
+    if (north && east) {
+        if (north_east) {
+            return map.ne_f; // clip north east full
+        } else {
+            return map.ne_i; // clip north east corner
+        }
+    }
+    if (north && west) {
+        if (north_west) {
+            return map.nw_f; // clip north west full
+        } else {
+            return map.nw_i; // clip north west corner
+        }
+    }
+    if (south && east) {
+        if (south_east) {
+            return map.se_f; // clip south east full
+        } else {
+            return map.se_i; // clip south east corner
+        }
+    }
+    if (south && west) {
+        if (south_west) {
+            return map.sw_f; // clip south west full
+        } else {
+            return map.sw_i; // clip south west corner
+        }
+    }
+}
+
+function determineThreeSideImage (neighbors) {
+    // two sided cares about the diagonal between two adjacent openings
+    const { north, south, east, west } = neighbors;
+    const { north_east, north_west, south_east, south_west } = neighbors;
+    const map = full_iso_sprite_map.three;
+
+    // Faces north
+    if (west && north && east) {
+        if (north_west && north_east) {
+            return map.north.f; // clip facing north northwest full northeast full
+        }
+        if (north_west && !north_east) {
+            return map.north.ne_i; // clip facing north northwest full northeast corner
+        }
+        if (!north_west && north_east) {
+            return map.north.nw_i; // clip facing north northwest corner northeast full
+        }
+        if (!north_west && !north_east) {
+            return map.north.i; // clip facing north northwest corner northeast corner
+        }
+    }
+
+    // Faces east
+    if (north && east && south) {
+        if (north_east && south_east) {
+            return map.east.f; // clip facing east north_east full south_east full
+        }
+        if (north_east && !south_east) {
+            return map.east.se_i; // clip facing east north_east full south_east corner
+        }
+        if (!north_east && south_east) {
+            return map.east.ne_i; // clip facing east north_east corner south_east full
+        }
+        if (!north_east && !south_east) {
+            return map.east.i; // clip facing east north_east corner south_east corner
+        }
+    }
+
+    // Faces south
+    if (west && south && east) {
+        if (south_west && south_east) {
+            return map.south.f; // clip facing east south_west full south_east full
+        }
+        if (south_west && !south_east) {
+            return map.south.se_i; // clip facing east south_west full south_east corner
+        }
+        if (!south_west && south_east) {
+            return map.south.sw_i; // clip facing east south_west corner south_east full
+        }
+        if (!south_west && !south_east) {
+            return map.south.i; // clip facing east south_west corner south_east corner
+        }
+    }
+
+    // Faces west
+    if (north && west && south) {
+        if (north_west && south_west) {
+            return map.west.f; // clip facing east north_west full south_west full
+        }
+        if (north_west && !south_west) {
+            return map.west.sw_i; // clip facing east north_west full south_west corner
+        }
+        if (!north_west && south_west) {
+            return map.west.nw_i; // clip facing east north_west corner south_west full
+        }
+        if (!north_west && !south_west) {
+            return map.west.i; // clip facing east north_west corner south_west corner
+        }
+    }
+}
+
+function determineFourSideImage (neighbors) {
+    const { north_east, north_west, south_east, south_west } = neighbors;
+    const map = full_iso_sprite_map.four;
+
+    // all four
+    if (north_east && north_west && south_east && south_west) {
+        return map.f; // all full
+    }
+
+    if (!north_east && !north_west && !south_east && !south_west) {
+        return map.i; // all inside corners
+    }
+
+    // ONE INSIDE CORNER
+    // northeast corner only
+    if (!north_east && north_west && south_east && south_west) {
+        return map.ne_i;
+    }
+    // northwest corner only
+    if (north_east && !north_west && south_east && south_west) {
+        return map.nw_i;
+    }
+    // southeast corner only
+    if (north_east && north_west && !south_east && south_west) {
+        return map.se_i;
+    }
+    // southwest corner only
+    if (north_east && north_west && south_east && !south_west) {
+        return map.sw_i;
+    }
+
+    // TWO INSIDE CORNERS
+    // northeast and northwest
+    if (!north_east && !north_west && south_east && south_west) {
+        return map.nw_i_ne_i;
+    }
+    // northeast and southeast
+    if (!north_east && north_west && !south_east && south_west) {
+        return map.ne_i_se_i;
+    }
+    // southwest and southeast
+    if (north_east && north_west && !south_east && !south_west) {
+        return map.sw_i_se_i;
+    }
+    // northwest and southwest
+    if (north_east && !north_west && south_east && !south_west) {
+        return map.nw_i_sw_i;
+    }
+    // northwest and southeast
+    if (north_east && !north_west && !south_east && south_west) {
+        return map.nw_i_se_i;
+    }
+    // northeast and southwest
+    if (!north_east && north_west && south_east && !south_west) {
+        return map.ne_i_sw_i;
+    }
+
+    // THREE INSIDE CORNERS
+    // not northwest
+    if (!north_east && north_west && !south_east && !south_west) {
+        return map.nw_f;
+    }
+    // not northeast
+    if (north_east && !north_west && !south_east && !south_west) {
+        return map.ne_f;
+    }
+    // not southeast
+    if (!north_east && !north_west && south_east && !south_west) {
+        return map.se_f;
+    }
+    // not southwest
+    if (!north_east && !north_west && !south_east && south_west) {
+        return map.sw_f;
+    }
+}
+
+module.exports = {
+    getSpritePosition,
+};
 
 /***/ }),
 /* 14 */
-/***/ (function(module, exports, __webpack_require__) {
+/***/ (function(module, exports) {
 
-module.exports = __webpack_require__.p + "src/js/game/objects/terrain/wall/wall_open_two.png";
+module.exports = {
+    one: {
+       e: {x: 0, y: 0},
+       n: {x: 1, y: 0},
+       s: {x: 2, y: 0},
+       w: {x: 3, y: 0},
+    },
+    two: {
+        ne_i: {x: 0, y: 1},
+        se_i: {x: 1, y: 1},
+        sw_i: {x: 2, y: 1},
+        nw_i: {x: 3, y: 1},
+
+        ne_f: {x: 0, y: 2},
+        se_f: {x: 1, y: 2},
+        sw_f: {x: 2, y: 2},
+        nw_f: {x: 3, y: 2},
+
+        v: {x: 1, y: 11},
+        h: {x: 2, y: 11},
+    },
+    three: {
+        north: {
+            i: {x: 0, y: 3},
+            nw_i: {x: 1, y: 3},
+            ne_i: {x: 2, y: 3},
+            f: {x: 3, y: 3},
+        },
+        east: {
+            i: {x: 0, y: 4},
+            se_i: {x: 1, y: 4},
+            ne_i: {x: 2, y: 4},
+            f: {x: 3, y: 4},
+        },
+        south: {
+            i: {x: 0, y: 5},
+            se_i: {x: 1, y: 5},
+            sw_i: {x: 2, y: 5},
+            f: {x: 3, y: 5},
+        },
+        west: {
+            i: {x: 0, y: 6},
+            sw_i: {x: 1, y: 6},
+            nw_i: {x: 2, y: 6},
+            f: {x: 3, y: 6},
+        }
+    },
+    four: {
+        f: {x: 0, y: 7},
+        i: {x: 1, y: 7},
+        ne_i_sw_i: {x: 2, y: 7},
+        nw_i_se_i: {x: 3, y: 7},
+
+        sw_i: {x: 0, y: 8},
+        nw_i: {x: 1, y: 8},
+        ne_i: {x: 2, y: 8},
+        se_i: {x: 3, y: 8},
+
+        sw_i_se_i: {x: 0, y: 9},
+        nw_i_sw_i: {x: 1, y: 9},
+        nw_i_ne_i: {x: 2, y: 9},
+        ne_i_se_i: {x: 3, y: 9},
+
+        ne_f: {x: 0, y: 10},
+        nw_f: {x: 1, y: 10},
+        sw_f: {x: 2, y: 10},
+        se_f: {x: 3, y: 10},
+    },
+    none: {
+        f: {x: 0, y: 11},
+    }
+};
 
 /***/ }),
 /* 15 */
 /***/ (function(module, exports, __webpack_require__) {
 
-module.exports = __webpack_require__.p + "src/js/game/objects/terrain/wall/wall_open_two_straight.png";
+module.exports = __webpack_require__.p + "src/js/game/objects/terrain/wall/wall_open_none.png";
 
 /***/ }),
 /* 16 */
 /***/ (function(module, exports, __webpack_require__) {
 
-module.exports = __webpack_require__.p + "src/js/game/objects/terrain/wall/wall_open_three.png";
+module.exports = __webpack_require__.p + "src/js/game/objects/terrain/wall/wall_open_one.png";
 
 /***/ }),
 /* 17 */
 /***/ (function(module, exports, __webpack_require__) {
 
-module.exports = __webpack_require__.p + "src/js/game/objects/terrain/wall/wall_open_four.png";
+module.exports = __webpack_require__.p + "src/js/game/objects/terrain/wall/wall_open_two.png";
 
 /***/ }),
 /* 18 */
+/***/ (function(module, exports, __webpack_require__) {
+
+module.exports = __webpack_require__.p + "src/js/game/objects/terrain/wall/wall_open_two_straight.png";
+
+/***/ }),
+/* 19 */
+/***/ (function(module, exports, __webpack_require__) {
+
+module.exports = __webpack_require__.p + "src/js/game/objects/terrain/wall/wall_open_three.png";
+
+/***/ }),
+/* 20 */
+/***/ (function(module, exports, __webpack_require__) {
+
+module.exports = __webpack_require__.p + "src/js/game/objects/terrain/wall/wall_open_four.png";
+
+/***/ }),
+/* 21 */
+/***/ (function(module, exports, __webpack_require__) {
+
+module.exports = __webpack_require__.p + "src/js/game/objects/terrain/wall/wall_tile_set_2.png";
+
+/***/ }),
+/* 22 */
 /***/ (function(module, exports) {
 
 module.exports = [
@@ -1850,7 +2167,7 @@ module.exports = [
 ];
 
 /***/ }),
-/* 19 */
+/* 23 */
 /***/ (function(module, exports) {
 
 module.exports = [
@@ -1865,10 +2182,10 @@ module.exports = [
 'W  W  WWWWW      W  WWW        WW                WWWWWWWWWWWWWWWWWWWWWWWWW WWWWW',
 'W         W      W  W W                          WWWWWWWWWWWWWWWWWWWWWWWWW WWWWW',
 'W         WWWW   W  WWW                                                        W',
-'W         WW     W                                                             W',
-'W          W     W                                                             W',
-'W          WWWWWWW                                                             W',
-'W                                                                              W',
+'W         WW     W        TTTTTTTTTTTTTTTTTTTTT                                W',
+'W          W     W        TTTTTTTTTTTTTTTTTTTTT                                W',
+'W          WWWWWWW        TTTTTTTTTTTTTTTTTTTTT                                W',
+'W                         TTTTTTTTTTTTTTTTTTTTT                                W',
 'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
 'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
 'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
@@ -2008,16 +2325,34 @@ module.exports = [
 ];
 
 /***/ }),
-/* 20 */
+/* 24 */
+/***/ (function(module, exports) {
+
+module.exports = [
+    '                                       ',
+    '   @   W                               ',
+    '      WWW                              ',
+    '       W                               ',
+    '                                       ',
+    '                                       ',
+    '                                       ',
+    '                                       ',
+    '                                       ',
+    '                                       ',
+    '                                       ',
+    ];
+
+/***/ }),
+/* 25 */
 /***/ (function(module, exports, __webpack_require__) {
 
 const GOM = __webpack_require__(0);
 const GIM = __webpack_require__(1);
 const GOB = __webpack_require__(2);
 
-const Player = __webpack_require__(5);
-const Wall = __webpack_require__(6);
-const Tree = __webpack_require__(21);
+const Player = __webpack_require__(6);
+const Wall = __webpack_require__(7);
+const Tree = __webpack_require__(26);
 /*
 What kind of environment do I want.
     - No tiers, just one flat plane
@@ -2068,13 +2403,19 @@ class World {
             row.forEach((tile, x) => {
                 const type = WORLD_MAP_LEGEND[tile];
                 const objectParams = {
-                    x,
-                    y,
+                    spawn: {
+                        x: (x * this.cell_size) + this.half_cell_size,
+                        y: (y * this.cell_size) + this.half_cell_size,
+                    },
                     neighbors: {
                         north: WORLD_MAP_LEGEND[(world[y - 1] || [])[x] || null] || null,
                         south: WORLD_MAP_LEGEND[(world[y + 1] || [])[x] || null] || null,
                         east: WORLD_MAP_LEGEND[(world[y] || [])[x + 1] || null] || null,
                         west: WORLD_MAP_LEGEND[(world[y] || [])[x - 1] || null] || null,
+                        north_east: WORLD_MAP_LEGEND[(world[y - 1] || [])[x + 1] || null] || null,
+                        north_west: WORLD_MAP_LEGEND[(world[y - 1] || [])[x - 1] || null] || null,
+                        south_east: WORLD_MAP_LEGEND[(world[y + 1] || [])[x + 1] || null] || null,
+                        south_west: WORLD_MAP_LEGEND[(world[y + 1] || [])[x - 1] || null] || null,
                     }
                 };
                 switch (type) {
@@ -2103,8 +2444,6 @@ class World {
             ...params,
             camera_follow: true,
             layer: GOM.front,
-            x: (params.x * this.cell_size) + this.half_cell_size,
-            y: (params.y * this.cell_size) + this.half_cell_size,
         });
     }
 
@@ -2112,11 +2451,7 @@ class World {
         new Wall({
             ...params,
             layer: GOM.front,
-            x: params.x * this.cell_size,
-            y: params.y * this.cell_size,
             z: 1,
-            width: this.cell_size,
-            height: this.cell_size,
         });
     }
 
@@ -2124,11 +2459,7 @@ class World {
         new Tree({
             ...params,
             layer: GOM.front,
-            x: params.x * this.cell_size,
-            y: params.y * this.cell_size,
             z: 2,
-            width: this.cell_size,
-            height: this.cell_size,
         });
     }
 }
@@ -2136,7 +2467,7 @@ class World {
 module.exports = World;
 
 /***/ }),
-/* 21 */
+/* 26 */
 /***/ (function(module, exports, __webpack_require__) {
 
 const GOM = __webpack_require__(0);
@@ -2145,200 +2476,65 @@ const GOB = __webpack_require__(2);
 
 const { getRandomInt } = __webpack_require__(3);
 
-// const TREE_IMAGE = require('./tree.png');
-const TREE_TRUNK_IMAGE = __webpack_require__(22);
-const TREE_TOP_IMAGE = __webpack_require__(23);
+const TREE_TRUNK_IMAGE = __webpack_require__(27);
+const TREE_TOP_IMAGES = [
+    __webpack_require__(28),
+    __webpack_require__(29),
+    __webpack_require__(30),
+];
 
 class Tree extends GOB {
 	constructor (opts = {}) {
-        console.log('SPAWN TREE');
         super(opts);
 
-        this.type = "tree";
-        this.collidable = true;
-
-		this.width = opts.width;
-        this.height = opts.height;
-
-        this.img_trunk_info = null;
-        this.img_trunk = new Image();
-        this.img_trunk.onload = () => {
-            this.img_trunk_info = {
-                width: this.img_trunk.naturalWidth,
-                height: this.img_trunk.naturalHeight,
-            }
-            this.configureTile();
-        };
-        this.img_trunk.src = TREE_TRUNK_IMAGE;
-
-        this.img_top_info = null;
-        this.img_top = new Image();
-        this.img_top.onload = () => {
-            this.img_top_info = {
-                width: this.img_top.naturalWidth,
-                height: this.img_top.naturalHeight,
-            }
-            this.configureTile();
-        };
-        this.img_top.src = TREE_TOP_IMAGE;
-
-        // We'll want the center of the player and don't want to
-        // calculate this all the time
-        this.half_width = this.width / 2;
-        this.half_height = this.height / 2;
-
+        this.type = 'tree';
         this.configured = false;
+        this.collidable = true;
+        this.collision_type = 'box';
+
+        this.loadImages({
+            main: TREE_TRUNK_IMAGE,
+            top: TREE_TOP_IMAGES[getRandomInt(0,2)],
+        }).then((images) => {
+            this.configureObject();
+        });
 
 		return this;
     }
 
-    configureTile () {
-        console.log(this.img_trunk_info);
-        console.log(this.img_top_info);
+    configureObject () {
+        this.width = this.images.main.naturalWidth;
+        this.height = this.images.main.naturalHeight;
 
-        if (!this.img_trunk_info || !this.img_top_info) return;
+        this.top_half_width = this.images.top.naturalWidth / 2;
+        this.top_half_height = this.images.top.naturalHeight / 2;
 
-        this.img_trunk_info.half_width = this.img_trunk_info.width / 2;
-        this.img_trunk_info.half_height = this.img_trunk_info.height / 2;
+        // Should be spawn size
+        const cell_size = 50;
 
-        this.img_top_info.half_width = this.img_top_info.width / 2;
-        this.img_top_info.half_height = this.img_top_info.height / 2;
+        let left = (this.x - (cell_size / 2)) + this.half_width;
+        left += getRandomInt(0, cell_size - this.width);
+        this.x = left;
 
-        const random_area_size = this.width - this.img_trunk_info.width;
-        // random are size is 30
-        const x_mod = getRandomInt(1, random_area_size);
-        const y_mod = getRandomInt(1, random_area_size);
-
-        // I want the pos between 10 and 40
-        const x_pos = this.img_trunk_info.half_width + x_mod;
-        const y_pos = this.img_trunk_info.half_height + y_mod;
-
-        this.img_trunk_info.x = x_pos;
-        this.img_trunk_info.y = y_pos;
-
-        this.img_top_info.x = x_pos;
-        this.img_top_info.y = y_pos;
+        let top = (this.y - (cell_size / 2)) + this.half_height;
+        top += getRandomInt(0, cell_size - this.height);
+        this.y = top;
 
         this.configured = true;
     }
 
-    checkCollision (obj) {
-        if (!obj) return null;
-        if (obj.type === 'player') {
-            return this.checkPlayerCollision(obj);
-        }
-    }
-
-    checkPlayerCollision (obj) {
-        if (!this.in_viewport) return;
-        if (obj.velY === 0 && obj.velX === 0) return;
-
-        if (Math.abs(obj.x - this.x) > 100 || Math.abs(obj.y - this.y) > 100) return;
-
-        let next_obj_x = obj.x + obj.velX;
-        let next_obj_y = obj.y + obj.velY;
-
-        let current_obj_bounds = {
-            left: obj.x - obj.half_width,
-            right: obj.x + obj.half_width,
-            top: obj.y - obj.half_height,
-            bottom: obj.y + obj.half_height,
-        }
-        let next_obj_bounds = {
-            left: next_obj_x - obj.half_width,
-            right: next_obj_x + obj.half_width,
-            top: next_obj_y - obj.half_height,
-            bottom: next_obj_y + obj.half_height,
-        };
-        let bounds = {
-            left: this.x + this.img_trunk_info.x - this.img_trunk_info.half_width,
-            right: this.x + this.img_trunk_info.x + this.img_trunk_info.half_width,
-            top: this.y + this.img_trunk_info.y - this.img_trunk_info.half_height,
-            bottom: this.y + this.img_trunk_info.y + this.img_trunk_info.half_height,
-        };
-
-        let modified_vel = {
-            x: 0,
-            y: 0,
-        };
-
-        // We're moving right, and the step of the obj shows a collision
-        if (obj.velX > 0 && (current_obj_bounds.right <= bounds.left && next_obj_bounds.right > bounds.left)) {
-            if (verticalCollision()) {
-                modified_vel.x = -Math.abs(next_obj_bounds.right - bounds.left);
-            }
-        }
-        if (obj.velX < 0 && (current_obj_bounds.left >= bounds.right && next_obj_bounds.left < bounds.right)) {
-            if (verticalCollision()) {
-                modified_vel.x = Math.abs(next_obj_bounds.left - bounds.right);
-            }
-        }
-        if (obj.velY > 0 && (current_obj_bounds.bottom <= bounds.top && next_obj_bounds.bottom > bounds.top)) {
-            if (horizontalCollision()) {
-                modified_vel.y = -Math.abs(next_obj_bounds.bottom - bounds.top);
-            }
-        }
-        if (obj.velY < 0 && (current_obj_bounds.top >= bounds.bottom && next_obj_bounds.top < bounds.bottom)) {
-            if (horizontalCollision()) {
-                modified_vel.y = Math.abs(next_obj_bounds.top - bounds.bottom);
-            }
-        }
-
-        function horizontalCollision () {
-            if (next_obj_bounds.left === bounds.left && next_obj_bounds.right === bounds.right) {
-                return true;
-            }
-            if (next_obj_bounds.left > bounds.left && next_obj_bounds.left < bounds.right ||
-                next_obj_bounds.right > bounds.left && next_obj_bounds.right < bounds.right) {
-                return true;
-            }
-            return false;
-        }
-
-        function verticalCollision () {
-            if (next_obj_bounds.top === bounds.top && next_obj_bounds.bottom === bounds.bottom) {
-                return true;
-            }
-            if (next_obj_bounds.top > bounds.top && next_obj_bounds.top < bounds.bottom ||
-                next_obj_bounds.bottom > bounds.top && next_obj_bounds.bottom < bounds.bottom) {
-                return true;
-            }
-            return false;
-        }
-
-        if (!modified_vel.x && !modified_vel.y) return null;
-        return modified_vel;
-    }
-
-	update () {
-
-    }
-
 	draw () {
         if (!this.in_viewport || !this.configured) return;
+        this.drawImage();
 		this.context.save();
-            // this.context.drawImage(
-            //     this.img_trunk,
-            //     this.x - GOM.camera_offset.x,
-            //     this.y - GOM.camera_offset.y
-            // );
-
-            this.context.drawImage(
-                this.img_trunk,
-                this.x + (this.img_trunk_info.x - this.img_trunk_info.half_width) - GOM.camera_offset.x,
-                this.y + (this.img_trunk_info.y - this.img_trunk_info.half_height) - GOM.camera_offset.y
-            );
-
-
             this.context.globalAlpha = 0.5;
             this.context.drawImage(
-                this.img_top,
-                this.x + (this.img_top_info.x - this.img_top_info.half_width) - GOM.camera_offset.x,
-                this.y + (this.img_top_info.y - this.img_top_info.half_height) - GOM.camera_offset.y
+                this.images.top,
+                this.x - this.top_half_width - GOM.camera_offset.x,
+                this.y - this.top_half_height - GOM.camera_offset.y
             );
-
-
         this.context.restore();
+        this.drawCollisionPoints();
 	}
 }
 
@@ -2346,16 +2542,28 @@ module.exports = Tree;
 
 
 /***/ }),
-/* 22 */
+/* 27 */
 /***/ (function(module, exports, __webpack_require__) {
 
-module.exports = __webpack_require__.p + "src/js/game/objects/terrain/tree/treetrunk.png";
+module.exports = __webpack_require__.p + "src/js/game/objects/terrain/tree/tree_trunk.png";
 
 /***/ }),
-/* 23 */
+/* 28 */
 /***/ (function(module, exports, __webpack_require__) {
 
-module.exports = __webpack_require__.p + "src/js/game/objects/terrain/tree/treetop.png";
+module.exports = __webpack_require__.p + "src/js/game/objects/terrain/tree/tree_1.png";
+
+/***/ }),
+/* 29 */
+/***/ (function(module, exports, __webpack_require__) {
+
+module.exports = __webpack_require__.p + "src/js/game/objects/terrain/tree/tree_2.png";
+
+/***/ }),
+/* 30 */
+/***/ (function(module, exports, __webpack_require__) {
+
+module.exports = __webpack_require__.p + "src/js/game/objects/terrain/tree/tree_3.png";
 
 /***/ })
 /******/ ]);

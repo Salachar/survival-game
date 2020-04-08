@@ -55,13 +55,19 @@ class World {
             row.forEach((tile, x) => {
                 const type = WORLD_MAP_LEGEND[tile];
                 const objectParams = {
-                    x,
-                    y,
+                    spawn: {
+                        x: (x * this.cell_size) + this.half_cell_size,
+                        y: (y * this.cell_size) + this.half_cell_size,
+                    },
                     neighbors: {
                         north: WORLD_MAP_LEGEND[(world[y - 1] || [])[x] || null] || null,
                         south: WORLD_MAP_LEGEND[(world[y + 1] || [])[x] || null] || null,
                         east: WORLD_MAP_LEGEND[(world[y] || [])[x + 1] || null] || null,
                         west: WORLD_MAP_LEGEND[(world[y] || [])[x - 1] || null] || null,
+                        north_east: WORLD_MAP_LEGEND[(world[y - 1] || [])[x + 1] || null] || null,
+                        north_west: WORLD_MAP_LEGEND[(world[y - 1] || [])[x - 1] || null] || null,
+                        south_east: WORLD_MAP_LEGEND[(world[y + 1] || [])[x + 1] || null] || null,
+                        south_west: WORLD_MAP_LEGEND[(world[y + 1] || [])[x - 1] || null] || null,
                     }
                 };
                 switch (type) {
@@ -90,8 +96,6 @@ class World {
             ...params,
             camera_follow: true,
             layer: GOM.front,
-            x: (params.x * this.cell_size) + this.half_cell_size,
-            y: (params.y * this.cell_size) + this.half_cell_size,
         });
     }
 
@@ -99,11 +103,7 @@ class World {
         new Wall({
             ...params,
             layer: GOM.front,
-            x: params.x * this.cell_size,
-            y: params.y * this.cell_size,
             z: 1,
-            width: this.cell_size,
-            height: this.cell_size,
         });
     }
 
@@ -111,11 +111,7 @@ class World {
         new Tree({
             ...params,
             layer: GOM.front,
-            x: params.x * this.cell_size,
-            y: params.y * this.cell_size,
             z: 2,
-            width: this.cell_size,
-            height: this.cell_size,
         });
     }
 }
