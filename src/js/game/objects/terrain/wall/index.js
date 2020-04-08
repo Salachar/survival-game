@@ -25,9 +25,6 @@ class Wall extends GOB {
         this.collidable = true;
         this.collision_type = 'box';
 
-        // this.image_data = this.determineImage(opts.neighbors);
-        // this.image_data.rotation = degreesToRadians(this.image_data.rotation);
-
         this.determineImage(opts.neighbors);
 
         this.loadImages({
@@ -40,8 +37,6 @@ class Wall extends GOB {
     }
 
     configureObject () {
-        // this.width = this.images.main.naturalWidth;
-        // this.height = this.images.main.naturalHeight;
         this.width = 50;
         this.height = 50;
         this.configured = true;
@@ -62,11 +57,8 @@ class Wall extends GOB {
 
 	draw () {
         if (!this.in_viewport || !this.configured || !this.sprite_index) return;
-        // this.drawImage();
         const cell_size = 50;
-
 		this.context.save();
-
 			this.context.drawImage(
                 this.images.main,
                 this.sprite_index.x * cell_size,
@@ -79,7 +71,7 @@ class Wall extends GOB {
                 cell_size
 			);
 		this.context.restore();
-        // this.drawCollisionPoints();
+        this.drawCollisionPoints();
 	}
 }
 

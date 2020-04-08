@@ -576,6 +576,7 @@ const {
     checkProjectileBoxCollision
 } = __webpack_require__(11);
 
+const ImageCache = __webpack_require__(31);
 const Helpers = __webpack_require__(3);
 const uuid = Helpers.uuid;
 
@@ -666,7 +667,7 @@ class GOB {
 	loadImages (images_obj) {
 		return new Promise((resolve) => {
 			Promise.all(Object.keys(images_obj).map((image_key) => {
-				return this.loadImage(image_key, images_obj[image_key]);
+				return ImageCache.load(image_key, images_obj[image_key]);
 			})).then((image_results) => {
 				image_results.forEach((image_result) => {
 					if (!image_result) return;
@@ -676,22 +677,6 @@ class GOB {
 			});
 		});
 
-	}
-
-	loadImage (image_key, image_source) {
-		return new Promise((resolve) => {
-			const img = new Image();
-			img.onload = () => {
-				resolve({
-					key: image_key,
-					image: img
-				});
-			};
-			img.onerror = () => {
-				resolve(null);
-			};
-			img.src = image_source;
-		});
 	}
 
 	configureGameObject () {
@@ -1471,9 +1456,6 @@ class Wall extends GOB {
         this.collidable = true;
         this.collision_type = 'box';
 
-        // this.image_data = this.determineImage(opts.neighbors);
-        // this.image_data.rotation = degreesToRadians(this.image_data.rotation);
-
         this.determineImage(opts.neighbors);
 
         this.loadImages({
@@ -1486,8 +1468,6 @@ class Wall extends GOB {
     }
 
     configureObject () {
-        // this.width = this.images.main.naturalWidth;
-        // this.height = this.images.main.naturalHeight;
         this.width = 50;
         this.height = 50;
         this.configured = true;
@@ -1508,11 +1488,8 @@ class Wall extends GOB {
 
 	draw () {
         if (!this.in_viewport || !this.configured || !this.sprite_index) return;
-        // this.drawImage();
         const cell_size = 50;
-
 		this.context.save();
-
 			this.context.drawImage(
                 this.images.main,
                 this.sprite_index.x * cell_size,
@@ -1525,7 +1502,7 @@ class Wall extends GOB {
                 cell_size
 			);
 		this.context.restore();
-        // this.drawCollisionPoints();
+        this.drawCollisionPoints();
 	}
 }
 
@@ -2564,6 +2541,68 @@ module.exports = __webpack_require__.p + "src/js/game/objects/terrain/tree/tree_
 /***/ (function(module, exports, __webpack_require__) {
 
 module.exports = __webpack_require__.p + "src/js/game/objects/terrain/tree/tree_3.png";
+
+/***/ }),
+/* 31 */
+/***/ (function(module, exports) {
+
+class ImageCache {
+    constructor () {
+        this.cached_images = {};
+        this.image_promises = {};
+    }
+
+    load (image_key, image_source) {
+        const cached_image = this.cached_images[image_source];
+
+        const image_promise = new Promise((resolve) => {
+            if (cached_image) {
+                if (cached_image.complete) {
+                    resolve({
+                        key: image_key,
+                        image: cached_image
+                    });
+                } else {
+                    this.image_promises[image_source].push({
+                        resolve: resolve,
+                        payload: {
+                            key: image_key,
+                            image: cached_image
+                        }
+                    });
+                }
+                return;
+            }
+
+            console.log('Image load called for: ' + image_source);
+
+            const img = new Image();
+            img.onload = () => {
+                this.image_promises[image_source].forEach((image_promise) => {
+                    image_promise.resolve(image_promise.payload);
+                });
+                this.image_promises[image_source] = [];
+            };
+            img.onerror = () => {
+                resolve(null);
+            };
+            this.cached_images[image_source] = img;
+            this.image_promises[image_source] = [{
+                resolve: resolve,
+                payload: {
+                    key: image_key,
+                    image: img
+                }
+            }];
+
+            img.src = image_source;
+        });
+
+        return image_promise;
+    }
+}
+
+module.exports = new ImageCache();
 
 /***/ })
 /******/ ]);

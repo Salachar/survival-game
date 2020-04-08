@@ -1,11 +1,12 @@
-const GOM = require('./game-object-manager');
+const GOM = require('core/game-object-manager');
 
 const {
     checkBoxCollision,
     checkProjectileBoxCollision
 } = require('lib/collision');
 
-const Helpers = require('../lib/helpers');
+const ImageCache = require('lib/image-cache');
+const Helpers = require('lib/helpers');
 const uuid = Helpers.uuid;
 
 class GOB {
@@ -95,7 +96,7 @@ class GOB {
 	loadImages (images_obj) {
 		return new Promise((resolve) => {
 			Promise.all(Object.keys(images_obj).map((image_key) => {
-				return this.loadImage(image_key, images_obj[image_key]);
+				return ImageCache.load(image_key, images_obj[image_key]);
 			})).then((image_results) => {
 				image_results.forEach((image_result) => {
 					if (!image_result) return;
@@ -105,22 +106,6 @@ class GOB {
 			});
 		});
 
-	}
-
-	loadImage (image_key, image_source) {
-		return new Promise((resolve) => {
-			const img = new Image();
-			img.onload = () => {
-				resolve({
-					key: image_key,
-					image: img
-				});
-			};
-			img.onerror = () => {
-				resolve(null);
-			};
-			img.src = image_source;
-		});
 	}
 
 	configureGameObject () {
