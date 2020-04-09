@@ -2575,7 +2575,7 @@ module.exports = {
 /* 24 */
 /***/ (function(module, exports, __webpack_require__) {
 
-module.exports = __webpack_require__.p + "src/js/game/objects/terrain/Water/image/water.png";
+module.exports = __webpack_require__.p + "src/js/game/objects/terrain/water/image/water.png";
 
 /***/ }),
 /* 25 */

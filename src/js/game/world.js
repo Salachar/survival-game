@@ -4,7 +4,7 @@ const GOB = require('core/game-object-base');
 
 const Player = require('game/objects/player');
 const Wall = require('game/objects/terrain/wall');
-const Water = require('game/objects/terrain/Water');
+const Water = require('game/objects/terrain/water');
 const Tree = require('game/objects/terrain/tree');
 /*
 What kind of environment do I want.
