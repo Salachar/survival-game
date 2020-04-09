@@ -593,6 +593,7 @@ class GOB {
 		this.collidable = false;
 		this.collision_type = null; // box or circle
 		this.collision_points = [];
+		this.projectile_collision = true;
 
 		this.in_viewport = true;
 		this.configured = true;
@@ -721,7 +722,7 @@ class GOB {
 			if (obj.type === 'player') {
 				return checkBoxCollision(obj, this);
 			}
-			if (obj.type === 'projectile') {
+			if (obj.type === 'projectile' && this.projectile_collision) {
 				return checkProjectileBoxCollision(obj, this);
 			}
 		}
@@ -1172,6 +1173,7 @@ class Player extends GOB {
             layer: GOM.front,
             x: this.x,
             y: this.y,
+            z: 10,
             aim_x: GIM.mouse.x + GOM.camera_offset.x,
             aim_y: GIM.mouse.y + GOM.camera_offset.y,
         });
@@ -1264,7 +1266,7 @@ class Wall extends GOB {
                 cell_size
 			);
 		this.context.restore();
-        this.drawCollisionPoints();
+        // this.drawCollisionPoints();
 	}
 }
 
@@ -2455,6 +2457,7 @@ class World {
             ...params,
             camera_follow: true,
             layer: GOM.front,
+            z: 10,
         });
     }
 
@@ -2478,7 +2481,7 @@ class World {
         new Tree({
             ...params,
             layer: GOM.front,
-            z: 2,
+            z: 20,
         });
     }
 }
@@ -2506,6 +2509,7 @@ class Water extends GOB {
         this.configured = false;
         this.collidable = true;
         this.collision_type = 'box';
+        this.projectile_collision = false;
 
         this.determineImage(opts.neighbors);
 
@@ -2645,7 +2649,7 @@ class Tree extends GOB {
                 this.y - this.top_half_height - GOM.camera_offset.y
             );
         this.context.restore();
-        this.drawCollisionPoints();
+        // this.drawCollisionPoints();
 	}
 }
 
@@ -2656,25 +2660,25 @@ module.exports = Tree;
 /* 26 */
 /***/ (function(module, exports, __webpack_require__) {
 
-module.exports = __webpack_require__.p + "src/js/game/objects/terrain/tree/tree_trunk.png";
+module.exports = __webpack_require__.p + "src/js/game/objects/terrain/tree/image/tree_trunk.png";
 
 /***/ }),
 /* 27 */
 /***/ (function(module, exports, __webpack_require__) {
 
-module.exports = __webpack_require__.p + "src/js/game/objects/terrain/tree/tree_1.png";
+module.exports = __webpack_require__.p + "src/js/game/objects/terrain/tree/image/tree_1.png";
 
 /***/ }),
 /* 28 */
 /***/ (function(module, exports, __webpack_require__) {
 
-module.exports = __webpack_require__.p + "src/js/game/objects/terrain/tree/tree_2.png";
+module.exports = __webpack_require__.p + "src/js/game/objects/terrain/tree/image/tree_2.png";
 
 /***/ }),
 /* 29 */
 /***/ (function(module, exports, __webpack_require__) {
 
-module.exports = __webpack_require__.p + "src/js/game/objects/terrain/tree/tree_3.png";
+module.exports = __webpack_require__.p + "src/js/game/objects/terrain/tree/image/tree_3.png";
 
 /***/ })
 /******/ ]);

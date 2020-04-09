@@ -15,6 +15,7 @@ class Water extends GOB {
         this.configured = false;
         this.collidable = true;
         this.collision_type = 'box';
+        this.projectile_collision = false;
 
         this.determineImage(opts.neighbors);
 

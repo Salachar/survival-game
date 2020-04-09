@@ -4,11 +4,11 @@ const GOB = require('core/game-object-base');
 
 const { getRandomInt } = require('lib/helpers');
 
-const TREE_TRUNK_IMAGE = require('./tree_trunk.png');
+const TREE_TRUNK_IMAGE = require('./image/tree_trunk.png');
 const TREE_TOP_IMAGES = [
-    require('./tree_1.png'),
-    require('./tree_2.png'),
-    require('./tree_3.png'),
+    require('./image/tree_1.png'),
+    require('./image/tree_2.png'),
+    require('./image/tree_3.png'),
 ];
 
 class Tree extends GOB {
@@ -62,7 +62,7 @@ class Tree extends GOB {
                 this.y - this.top_half_height - GOM.camera_offset.y
             );
         this.context.restore();
-        this.drawCollisionPoints();
+        // this.drawCollisionPoints();
 	}
 }
 

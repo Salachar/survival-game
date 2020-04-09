@@ -63,7 +63,7 @@ class Wall extends GOB {
                 cell_size
 			);
 		this.context.restore();
-        this.drawCollisionPoints();
+        // this.drawCollisionPoints();
 	}
 }
 

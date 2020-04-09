@@ -102,6 +102,7 @@ class World {
             ...params,
             camera_follow: true,
             layer: GOM.front,
+            z: 10,
         });
     }
 
@@ -125,7 +126,7 @@ class World {
         new Tree({
             ...params,
             layer: GOM.front,
-            z: 2,
+            z: 20,
         });
     }
 }

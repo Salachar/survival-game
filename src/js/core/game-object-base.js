@@ -22,6 +22,7 @@ class GOB {
 		this.collidable = false;
 		this.collision_type = null; // box or circle
 		this.collision_points = [];
+		this.projectile_collision = true;
 
 		this.in_viewport = true;
 		this.configured = true;
@@ -150,7 +151,7 @@ class GOB {
 			if (obj.type === 'player') {
 				return checkBoxCollision(obj, this);
 			}
-			if (obj.type === 'projectile') {
+			if (obj.type === 'projectile' && this.projectile_collision) {
 				return checkProjectileBoxCollision(obj, this);
 			}
 		}

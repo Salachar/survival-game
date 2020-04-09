@@ -155,6 +155,7 @@ class Player extends GOB {
             layer: GOM.front,
             x: this.x,
             y: this.y,
+            z: 10,
             aim_x: GIM.mouse.x + GOM.camera_offset.x,
             aim_y: GIM.mouse.y + GOM.camera_offset.y,
         });
