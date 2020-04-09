@@ -38,7 +38,7 @@ class Tree extends GOB {
         this.top_half_height = this.images.top.naturalHeight / 2;
 
         // Should be spawn size
-        const cell_size = 50;
+        const cell_size = 48;
 
         let left = (this.x - (cell_size / 2)) + this.half_width;
         left += getRandomInt(0, cell_size - this.width);

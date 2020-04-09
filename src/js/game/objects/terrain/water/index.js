@@ -5,13 +5,13 @@ const GOB = require('core/game-object-base');
 const { getSpritePosition } = require('lib/sprite');
 
 const SPRITE_DATA = require('./image/info')
-const SPRITE = require('./image/wall.png');
+const SPRITE = require('./image/water.png');
 
-class Wall extends GOB {
+class Water extends GOB {
 	constructor (opts = {}) {
         super(opts);
 
-        this.type = 'wall';
+        this.type = 'water';
         this.configured = false;
         this.collidable = true;
         this.collision_type = 'box';
@@ -37,7 +37,7 @@ class Wall extends GOB {
         let wall_neighbors = {};
         let openings = 0;
         Object.keys(neighbors).forEach((nd) => { // nd -> neighbor direction
-            let wall = neighbors[nd] === 'WALL' || neighbors[nd] === null || false;
+            let wall = neighbors[nd] === 'WATER' || false;
             wall_neighbors[nd] = wall;
             // only count cardinal openings
             if (!nd.match(/_/) && wall) openings += 1;
@@ -67,4 +67,4 @@ class Wall extends GOB {
 	}
 }
 
-module.exports = Wall;
+module.exports = Water;

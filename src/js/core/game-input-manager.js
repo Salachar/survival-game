@@ -1,6 +1,6 @@
-const GOM = require('./game-object-manager');
+const GOM = require('core/game-object-manager');
 
-const Helpers = require('../lib/helpers');
+const Helpers = require('lib/helpers');
 const getMouseCoords = Helpers.getMouseCoords;
 
 // var SPACE_BAR = 32;

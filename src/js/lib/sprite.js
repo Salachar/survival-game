@@ -1,4 +1,4 @@
-const full_iso_sprite_map = require('lib/full_iso_sprite_map');
+const sprite_mapping = require('lib/sprite_mapping');
 
 function getSpritePosition (neighbors, openings) {
     switch (openings) {
@@ -17,23 +17,23 @@ function getSpritePosition (neighbors, openings) {
 
 function determineNoneSideImage () {
     // clip the none side sprite
-    return full_iso_sprite_map.none.f;
+    return sprite_mapping.none.f;
 }
 
 function determineOneSideImage (neighbors) {
     // one side doesnt give a shit about diagonals
     const { north, south, east, west } = neighbors;
-    if (north) return full_iso_sprite_map.one.n;
-    if (south) return full_iso_sprite_map.one.s;
-    if (east) return full_iso_sprite_map.one.e;
-    if (west) return full_iso_sprite_map.one.w;
+    if (north) return sprite_mapping.one.n;
+    if (south) return sprite_mapping.one.s;
+    if (east) return sprite_mapping.one.e;
+    if (west) return sprite_mapping.one.w;
 }
 
 function determineTwoSideImage (neighbors) {
     // two sided cares about the diagonal between two adjacent openings
     const { north, south, east, west } = neighbors;
     const { north_east, north_west, south_east, south_west } = neighbors;
-    const map = full_iso_sprite_map.two;
+    const map = sprite_mapping.two;
 
     if (north && south) {
         return map.v; // clip vertical tube
@@ -76,7 +76,7 @@ function determineThreeSideImage (neighbors) {
     // two sided cares about the diagonal between two adjacent openings
     const { north, south, east, west } = neighbors;
     const { north_east, north_west, south_east, south_west } = neighbors;
-    const map = full_iso_sprite_map.three;
+    const map = sprite_mapping.three;
 
     // Faces north
     if (west && north && east) {
@@ -145,7 +145,7 @@ function determineThreeSideImage (neighbors) {
 
 function determineFourSideImage (neighbors) {
     const { north_east, north_west, south_east, south_west } = neighbors;
-    const map = full_iso_sprite_map.four;
+    const map = sprite_mapping.four;
 
     // all four
     if (north_east && north_west && south_east && south_west) {

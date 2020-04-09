@@ -4,6 +4,7 @@ const GOB = require('core/game-object-base');
 
 const Player = require('game/objects/player');
 const Wall = require('game/objects/terrain/wall');
+const Water = require('game/objects/terrain/Water');
 const Tree = require('game/objects/terrain/tree');
 /*
 What kind of environment do I want.
@@ -19,15 +20,16 @@ What kind of environment do I want.
 
 const WORLD_MAP_LEGEND = {
     ' ': 'EMPTY',
+    '#': 'WALL',
     'R': 'ROCK',
     '@': 'PLAYER_SPAWN',
     'T': 'TREE',
-    'W': 'WALL', // permanent wall is permanent rock
+    'W': 'WATER', // permanent wall is permanent rock
 };
 
 class World {
     constructor (world_map) {
-        this.cell_size = 50;
+        this.cell_size = 48;
         this.half_cell_size = this.cell_size / 2;
 
         GOM.world_size = {
@@ -81,6 +83,10 @@ class World {
                         objectParams.permanent = true;
                         this.createWall(objectParams);
                         break;
+                    case 'WATER':
+                        objectParams.permanent = true;
+                        this.createWater(objectParams);
+                        break;
                     case 'TREE':
                         this.createTree(objectParams);
                     default: // EMPTY?
@@ -101,6 +107,14 @@ class World {
 
     createWall (params = {}) {
         new Wall({
+            ...params,
+            layer: GOM.front,
+            z: 1,
+        });
+    }
+
+    createWater (params = {}) {
+        new Water({
             ...params,
             layer: GOM.front,
             z: 1,
