@@ -52,7 +52,7 @@ class Tree extends GOB {
     }
 
 	draw () {
-        if (!this.in_viewport || !this.configured) return;
+        if (!this.in_viewport || !this.configured || !this.images.main) return;
         this.drawImage();
 		this.context.save();
             this.context.globalAlpha = 0.5;

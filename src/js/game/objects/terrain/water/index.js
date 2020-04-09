@@ -47,7 +47,7 @@ class Water extends GOB {
     }
 
 	draw () {
-        if (!this.in_viewport || !this.configured || !this.sprite_index) return;
+        if (!this.in_viewport || !this.configured || !this.sprite_index || !this.images.main) return;
 
         const cell_size = 48;
 		this.context.save();
