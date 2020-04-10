@@ -11,7 +11,9 @@ const TREE_TOP_IMAGES = [
     require('./image/tree_3.png'),
 ];
 
-const TREE_TOP = require('./image/new_tree_top_3.png');
+const TREE_TOP = require('./image/tree_top_anim.png');
+
+const TREE_TOP_SPRITE_DATA = require('./image/tree_top_info');
 
 class Tree extends GOB {
 	constructor (opts = {}) {
@@ -21,6 +23,9 @@ class Tree extends GOB {
         this.configured = false;
         this.collidable = true;
         this.collision_type = 'box';
+
+        this.frame_index = getRandomInt(0, TREE_TOP_SPRITE_DATA.frames - 1);
+        this.updates = 0;
 
         this.loadImages({
             main: TREE_TRUNK_IMAGE,
@@ -54,16 +59,43 @@ class Tree extends GOB {
         this.configured = true;
     }
 
+    update () {
+        this.updates += 1;
+        if (this.updates >= 12) {
+            this.frame_index += 1;
+            if (this.frame_index >= TREE_TOP_SPRITE_DATA.frames) {
+                this.frame_index = 0;
+            }
+            this.updates = 0;
+        }
+
+    }
+
 	draw () {
         if (!this.in_viewport || !this.configured || !this.images.main) return;
         this.drawImage();
-		this.context.save();
-            this.context.globalAlpha = 0.7;
+        this.context.save();
+
+
+            this.context.globalAlpha = 0.6;
+            // this.context.drawImage(
+            //     this.images.top,
+            //     this.x - this.top_half_width - GOM.camera_offset.x - 2,
+            //     this.y - this.top_half_height - GOM.camera_offset.y - 15,
+            // );
+
             this.context.drawImage(
                 this.images.top,
-                this.x - this.top_half_width - GOM.camera_offset.x - 1,
-                this.y - this.top_half_height - GOM.camera_offset.y - 20,
+                this.frame_index * TREE_TOP_SPRITE_DATA.width,
+                0,
+                TREE_TOP_SPRITE_DATA.width - (TREE_TOP_SPRITE_DATA.buffer * 2),
+                TREE_TOP_SPRITE_DATA.height - (TREE_TOP_SPRITE_DATA.buffer * 2),
+                this.cornerPosition.x - 14,
+                this.cornerPosition.y - 35,
+                TREE_TOP_SPRITE_DATA.width,
+                TREE_TOP_SPRITE_DATA.height,
             );
+
         this.context.restore();
         // this.drawCollisionPoints();
 	}
