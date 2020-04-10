@@ -61,8 +61,8 @@ class Tree extends GOB {
             this.context.globalAlpha = 0.7;
             this.context.drawImage(
                 this.images.top,
-                this.x - this.top_half_width - GOM.camera_offset.x - 2,
-                this.y - this.top_half_height - GOM.camera_offset.y - 30
+                this.x - this.top_half_width - GOM.camera_offset.x - 1,
+                this.y - this.top_half_height - GOM.camera_offset.y - 20,
             );
         this.context.restore();
         // this.drawCollisionPoints();
