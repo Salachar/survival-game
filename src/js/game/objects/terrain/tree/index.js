@@ -11,6 +11,8 @@ const TREE_TOP_IMAGES = [
     require('./image/tree_3.png'),
 ];
 
+const TREE_TOP = require('./image/new_tree_top_3.png');
+
 class Tree extends GOB {
 	constructor (opts = {}) {
         super(opts);
@@ -22,7 +24,8 @@ class Tree extends GOB {
 
         this.loadImages({
             main: TREE_TRUNK_IMAGE,
-            top: TREE_TOP_IMAGES[getRandomInt(0,2)],
+            // top: TREE_TOP_IMAGES[getRandomInt(0,2)],
+            top: TREE_TOP,
         }).then((images) => {
             this.configureObject();
         });
@@ -55,11 +58,11 @@ class Tree extends GOB {
         if (!this.in_viewport || !this.configured || !this.images.main) return;
         this.drawImage();
 		this.context.save();
-            this.context.globalAlpha = 0.5;
+            this.context.globalAlpha = 0.7;
             this.context.drawImage(
                 this.images.top,
-                this.x - this.top_half_width - GOM.camera_offset.x,
-                this.y - this.top_half_height - GOM.camera_offset.y
+                this.x - this.top_half_width - GOM.camera_offset.x - 2,
+                this.y - this.top_half_height - GOM.camera_offset.y - 30
             );
         this.context.restore();
         // this.drawCollisionPoints();

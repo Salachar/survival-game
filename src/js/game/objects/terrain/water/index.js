@@ -5,7 +5,7 @@ const GOB = require('core/game-object-base');
 const { getSpritePosition } = require('lib/sprite');
 
 const SPRITE_DATA = require('./image/info')
-const SPRITE = require('./image/water.png');
+const SPRITE = require('./image/water_tiles.png');
 
 class Water extends GOB {
 	constructor (opts = {}) {

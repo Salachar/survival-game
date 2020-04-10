@@ -2134,7 +2134,7 @@ module.exports = {
 /* 17 */
 /***/ (function(module, exports, __webpack_require__) {
 
-module.exports = __webpack_require__.p + "src/js/game/objects/terrain/wall/image/wall.png";
+module.exports = __webpack_require__.p + "src/js/game/objects/terrain/wall/image/wall_tiles.png";
 
 /***/ }),
 /* 18 */
@@ -2180,10 +2180,10 @@ module.exports = [
 module.exports = [
 '################################################################################',
 '#      TTT                                       ###############################',
-'#  @    TT  #       TTT        ##                #######                ########',
-'#      T T ###    WWWWWWWWW ##                             ######       ########',
-'#  #  # T TT#WWWWWW#######W     ##               ##################   ##########',
-'#          TT          ##WWWWW  ##               #################        ######',
+'#  @    TT  #       TTT        ##     ####       #######                ########',
+'#      T T ###    WWWWWWWWW ##        #W##                 ######       ########',
+'#  #  # T TT#WWWWWW#######W     ##    WWW#       ##################   ##########',
+'#          TT          ##WWWWW  ##     W####     #################        ######',
 '#  #  ####           #     WWWWW##               #####################     #####',
 '#  #                        WW                   ######################### #####',
 '#  #  #####      # T###        ##                ######################### #####',
@@ -2579,7 +2579,7 @@ module.exports = {
 /* 24 */
 /***/ (function(module, exports, __webpack_require__) {
 
-module.exports = __webpack_require__.p + "src/js/game/objects/terrain/water/image/water.png";
+module.exports = __webpack_require__.p + "src/js/game/objects/terrain/water/image/water_tiles.png";
 
 /***/ }),
 /* 25 */
@@ -2598,6 +2598,8 @@ const TREE_TOP_IMAGES = [
     __webpack_require__(29),
 ];
 
+const TREE_TOP = __webpack_require__(30);
+
 class Tree extends GOB {
 	constructor (opts = {}) {
         super(opts);
@@ -2609,7 +2611,8 @@ class Tree extends GOB {
 
         this.loadImages({
             main: TREE_TRUNK_IMAGE,
-            top: TREE_TOP_IMAGES[getRandomInt(0,2)],
+            // top: TREE_TOP_IMAGES[getRandomInt(0,2)],
+            top: TREE_TOP,
         }).then((images) => {
             this.configureObject();
         });
@@ -2642,11 +2645,11 @@ class Tree extends GOB {
         if (!this.in_viewport || !this.configured || !this.images.main) return;
         this.drawImage();
 		this.context.save();
-            this.context.globalAlpha = 0.5;
+            this.context.globalAlpha = 0.7;
             this.context.drawImage(
                 this.images.top,
-                this.x - this.top_half_width - GOM.camera_offset.x,
-                this.y - this.top_half_height - GOM.camera_offset.y
+                this.x - this.top_half_width - GOM.camera_offset.x - 2,
+                this.y - this.top_half_height - GOM.camera_offset.y - 30
             );
         this.context.restore();
         // this.drawCollisionPoints();
@@ -2679,6 +2682,12 @@ module.exports = __webpack_require__.p + "src/js/game/objects/terrain/tree/image
 /***/ (function(module, exports, __webpack_require__) {
 
 module.exports = __webpack_require__.p + "src/js/game/objects/terrain/tree/image/tree_3.png";
+
+/***/ }),
+/* 30 */
+/***/ (function(module, exports, __webpack_require__) {
+
+module.exports = __webpack_require__.p + "src/js/game/objects/terrain/tree/image/new_tree_top_3.png";
 
 /***/ })
 /******/ ]);

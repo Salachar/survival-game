@@ -5,7 +5,7 @@ const GOB = require('core/game-object-base');
 const { getSpritePosition } = require('lib/sprite');
 
 const SPRITE_DATA = require('./image/info')
-const SPRITE = require('./image/wall.png');
+const SPRITE = require('./image/wall_tiles.png');
 
 class Wall extends GOB {
 	constructor (opts = {}) {
