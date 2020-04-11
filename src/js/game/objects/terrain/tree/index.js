@@ -11,7 +11,7 @@ const TREE_TOP_IMAGES = [
     require('./image/tree_3.png'),
 ];
 
-const TREE_TOP = require('./image/tree_top_anim.png');
+const TREE_TOP = require('./image/new_tree_sprite.png');
 
 const TREE_TOP_SPRITE_DATA = require('./image/tree_top_info');
 
@@ -77,7 +77,7 @@ class Tree extends GOB {
         this.context.save();
 
 
-            this.context.globalAlpha = 0.6;
+            this.context.globalAlpha = 0.7;
             // this.context.drawImage(
             //     this.images.top,
             //     this.x - this.top_half_width - GOM.camera_offset.x - 2,
@@ -90,8 +90,8 @@ class Tree extends GOB {
                 0,
                 TREE_TOP_SPRITE_DATA.width - (TREE_TOP_SPRITE_DATA.buffer * 2),
                 TREE_TOP_SPRITE_DATA.height - (TREE_TOP_SPRITE_DATA.buffer * 2),
-                this.cornerPosition.x - 14,
-                this.cornerPosition.y - 35,
+                this.cornerPosition.x - 13, // (top frame width - trunk width) / 2
+                this.cornerPosition.y - 35, // magic
                 TREE_TOP_SPRITE_DATA.width,
                 TREE_TOP_SPRITE_DATA.height,
             );

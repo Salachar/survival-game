@@ -1205,9 +1205,11 @@ const GOM = __webpack_require__(0);
 const GIM = __webpack_require__(1);
 const GOB = __webpack_require__(2);
 
-const { getSpritePosition } = __webpack_require__(7);
+// const { getSpritePosition } = require('lib/sprite');
+const { getSpritePosition } = __webpack_require__(32);
 
 const SPRITE_DATA = __webpack_require__(16)
+// const SPRITE = require('./image/wall_tiles.png');
 const SPRITE = __webpack_require__(17);
 
 class Wall extends GOB {
@@ -1231,8 +1233,8 @@ class Wall extends GOB {
     }
 
     configureObject () {
-        this.width = 48;
-        this.height = 48;
+        this.width = 64;
+        this.height = 64;
         this.configured = true;
     }
 
@@ -1252,7 +1254,7 @@ class Wall extends GOB {
 	draw () {
         if (!this.in_viewport || !this.configured || !this.sprite_index || !this.images.main) return;
 
-        const cell_size = 48;
+        const cell_size = 64;
 		this.context.save();
 			this.context.drawImage(
                 this.images.main,
@@ -1277,230 +1279,7 @@ module.exports = Wall;
 /* 7 */
 /***/ (function(module, exports, __webpack_require__) {
 
-const sprite_mapping = __webpack_require__(15);
-
-function getSpritePosition (neighbors, openings) {
-    switch (openings) {
-        case 0:
-            return determineNoneSideImage(neighbors);
-        case 1:
-            return determineOneSideImage(neighbors);
-        case 2:
-            return determineTwoSideImage(neighbors);
-        case 3:
-            return determineThreeSideImage(neighbors);
-        case 4:
-            return determineFourSideImage(neighbors);
-    }
-}
-
-function determineNoneSideImage () {
-    // clip the none side sprite
-    return sprite_mapping.none.f;
-}
-
-function determineOneSideImage (neighbors) {
-    // one side doesnt give a shit about diagonals
-    const { north, south, east, west } = neighbors;
-    if (north) return sprite_mapping.one.n;
-    if (south) return sprite_mapping.one.s;
-    if (east) return sprite_mapping.one.e;
-    if (west) return sprite_mapping.one.w;
-}
-
-function determineTwoSideImage (neighbors) {
-    // two sided cares about the diagonal between two adjacent openings
-    const { north, south, east, west } = neighbors;
-    const { north_east, north_west, south_east, south_west } = neighbors;
-    const map = sprite_mapping.two;
-
-    if (north && south) {
-        return map.v; // clip vertical tube
-    }
-    if (east && west) {
-        return map.h; // clip horizontal tube
-    }
-
-    if (north && east) {
-        if (north_east) {
-            return map.ne_f; // clip north east full
-        } else {
-            return map.ne_i; // clip north east corner
-        }
-    }
-    if (north && west) {
-        if (north_west) {
-            return map.nw_f; // clip north west full
-        } else {
-            return map.nw_i; // clip north west corner
-        }
-    }
-    if (south && east) {
-        if (south_east) {
-            return map.se_f; // clip south east full
-        } else {
-            return map.se_i; // clip south east corner
-        }
-    }
-    if (south && west) {
-        if (south_west) {
-            return map.sw_f; // clip south west full
-        } else {
-            return map.sw_i; // clip south west corner
-        }
-    }
-}
-
-function determineThreeSideImage (neighbors) {
-    // two sided cares about the diagonal between two adjacent openings
-    const { north, south, east, west } = neighbors;
-    const { north_east, north_west, south_east, south_west } = neighbors;
-    const map = sprite_mapping.three;
-
-    // Faces north
-    if (west && north && east) {
-        if (north_west && north_east) {
-            return map.north.f; // clip facing north northwest full northeast full
-        }
-        if (north_west && !north_east) {
-            return map.north.ne_i; // clip facing north northwest full northeast corner
-        }
-        if (!north_west && north_east) {
-            return map.north.nw_i; // clip facing north northwest corner northeast full
-        }
-        if (!north_west && !north_east) {
-            return map.north.i; // clip facing north northwest corner northeast corner
-        }
-    }
-
-    // Faces east
-    if (north && east && south) {
-        if (north_east && south_east) {
-            return map.east.f; // clip facing east north_east full south_east full
-        }
-        if (north_east && !south_east) {
-            return map.east.se_i; // clip facing east north_east full south_east corner
-        }
-        if (!north_east && south_east) {
-            return map.east.ne_i; // clip facing east north_east corner south_east full
-        }
-        if (!north_east && !south_east) {
-            return map.east.i; // clip facing east north_east corner south_east corner
-        }
-    }
-
-    // Faces south
-    if (west && south && east) {
-        if (south_west && south_east) {
-            return map.south.f; // clip facing east south_west full south_east full
-        }
-        if (south_west && !south_east) {
-            return map.south.se_i; // clip facing east south_west full south_east corner
-        }
-        if (!south_west && south_east) {
-            return map.south.sw_i; // clip facing east south_west corner south_east full
-        }
-        if (!south_west && !south_east) {
-            return map.south.i; // clip facing east south_west corner south_east corner
-        }
-    }
-
-    // Faces west
-    if (north && west && south) {
-        if (north_west && south_west) {
-            return map.west.f; // clip facing east north_west full south_west full
-        }
-        if (north_west && !south_west) {
-            return map.west.sw_i; // clip facing east north_west full south_west corner
-        }
-        if (!north_west && south_west) {
-            return map.west.nw_i; // clip facing east north_west corner south_west full
-        }
-        if (!north_west && !south_west) {
-            return map.west.i; // clip facing east north_west corner south_west corner
-        }
-    }
-}
-
-function determineFourSideImage (neighbors) {
-    const { north_east, north_west, south_east, south_west } = neighbors;
-    const map = sprite_mapping.four;
-
-    // all four
-    if (north_east && north_west && south_east && south_west) {
-        return map.f; // all full
-    }
-
-    if (!north_east && !north_west && !south_east && !south_west) {
-        return map.i; // all inside corners
-    }
-
-    // ONE INSIDE CORNER
-    // northeast corner only
-    if (!north_east && north_west && south_east && south_west) {
-        return map.ne_i;
-    }
-    // northwest corner only
-    if (north_east && !north_west && south_east && south_west) {
-        return map.nw_i;
-    }
-    // southeast corner only
-    if (north_east && north_west && !south_east && south_west) {
-        return map.se_i;
-    }
-    // southwest corner only
-    if (north_east && north_west && south_east && !south_west) {
-        return map.sw_i;
-    }
-
-    // TWO INSIDE CORNERS
-    // northeast and northwest
-    if (!north_east && !north_west && south_east && south_west) {
-        return map.nw_i_ne_i;
-    }
-    // northeast and southeast
-    if (!north_east && north_west && !south_east && south_west) {
-        return map.ne_i_se_i;
-    }
-    // southwest and southeast
-    if (north_east && north_west && !south_east && !south_west) {
-        return map.sw_i_se_i;
-    }
-    // northwest and southwest
-    if (north_east && !north_west && south_east && !south_west) {
-        return map.nw_i_sw_i;
-    }
-    // northwest and southeast
-    if (north_east && !north_west && !south_east && south_west) {
-        return map.nw_i_se_i;
-    }
-    // northeast and southwest
-    if (!north_east && north_west && south_east && !south_west) {
-        return map.ne_i_sw_i;
-    }
-
-    // THREE INSIDE CORNERS
-    // not northwest
-    if (!north_east && north_west && !south_east && !south_west) {
-        return map.nw_f;
-    }
-    // not northeast
-    if (north_east && !north_west && !south_east && !south_west) {
-        return map.ne_f;
-    }
-    // not southeast
-    if (!north_east && !north_west && south_east && !south_west) {
-        return map.se_f;
-    }
-    // not southwest
-    if (!north_east && !north_west && !south_east && south_west) {
-        return map.sw_f;
-    }
-}
-
-module.exports = {
-    getSpritePosition,
-};
+module.exports = __webpack_require__.p + "src/js/game/objects/terrain/water/image/new_water_sprite.png";
 
 /***/ }),
 /* 8 */
@@ -2044,97 +1823,21 @@ module.exports = new CONFIG();
 
 
 /***/ }),
-/* 15 */
-/***/ (function(module, exports) {
-
-module.exports = {
-    one: {
-       e: {x: 0, y: 0},
-       n: {x: 1, y: 0},
-       s: {x: 2, y: 0},
-       w: {x: 3, y: 0},
-    },
-    two: {
-        ne_i: {x: 0, y: 1},
-        se_i: {x: 1, y: 1},
-        sw_i: {x: 2, y: 1},
-        nw_i: {x: 3, y: 1},
-
-        ne_f: {x: 0, y: 4},
-        se_f: {x: 1, y: 4},
-        sw_f: {x: 2, y: 4},
-        nw_f: {x: 3, y: 4},
-
-        v: {x: 1, y: 3},
-        h: {x: 2, y: 3},
-    },
-    three: {
-        north: {
-            i: {x: 0, y: 2},
-            nw_i: {x: 0, y: 5},
-            ne_i: {x: 0, y: 6},
-            f: {x: 0, y: 7},
-        },
-        east: {
-            i: {x: 1, y: 2},
-            se_i: {x: 1, y: 5},
-            ne_i: {x: 1, y: 6},
-            f: {x: 1, y: 7},
-        },
-        south: {
-            i: {x: 2, y: 2},
-            se_i: {x: 2, y: 5},
-            sw_i: {x: 2, y: 6},
-            f: {x: 2, y: 7},
-        },
-        west: {
-            i: {x: 3, y: 2},
-            sw_i: {x: 3, y: 5},
-            nw_i: {x: 3, y: 6},
-            f: {x: 3, y: 7},
-        }
-    },
-    four: {
-        f: {x: 2, y: 11},
-        i: {x: 3, y: 3},
-        ne_i_sw_i: {x: 0, y: 1},
-        nw_i_se_i: {x: 1, y: 1},
-
-        sw_i: {x: 0, y: 8},
-        nw_i: {x: 1, y: 8},
-        ne_i: {x: 2, y: 8},
-        se_i: {x: 3, y: 8},
-
-        sw_i_se_i: {x: 0, y: 9},
-        nw_i_sw_i: {x: 1, y: 9},
-        nw_i_ne_i: {x: 2, y: 9},
-        ne_i_se_i: {x: 3, y: 9},
-
-        ne_f: {x: 0, y: 10},
-        nw_f: {x: 1, y: 10},
-        sw_f: {x: 2, y: 10},
-        se_f: {x: 3, y: 10},
-    },
-    none: {
-        f: {x: 0, y: 3},
-    }
-};
-
-/***/ }),
+/* 15 */,
 /* 16 */
 /***/ (function(module, exports) {
 
 module.exports = {
-    width: 50,  // The width of a single cell
-    height: 50, // The height of a single cell
-    buffer: 1,  // The amount of whitespace around a cell
+    width: 64,  // The width of a single cell
+    height: 64, // The height of a single cell
+    buffer: 0,  // The amount of whitespace around a cell
 };
 
 /***/ }),
 /* 17 */
 /***/ (function(module, exports, __webpack_require__) {
 
-module.exports = __webpack_require__.p + "src/js/game/objects/terrain/wall/image/wall_tiles.png";
+module.exports = __webpack_require__.p + "src/js/game/objects/terrain/wall/image/new_wall_sprite.png";
 
 /***/ }),
 /* 18 */
@@ -2384,7 +2087,8 @@ const WORLD_MAP_LEGEND = {
 
 class World {
     constructor (world_map) {
-        this.cell_size = 48;
+        // this.cell_size = 48;
+        this.cell_size = 64;
         this.half_cell_size = this.cell_size / 2;
 
         GOM.world_size = {
@@ -2412,6 +2116,7 @@ class World {
             row.forEach((tile, x) => {
                 const type = WORLD_MAP_LEGEND[tile];
                 const objectParams = {
+                    world_cell_size: this.cell_size,
                     spawn: {
                         x: (x * this.cell_size) + this.half_cell_size,
                         y: (y * this.cell_size) + this.half_cell_size,
@@ -2496,10 +2201,12 @@ const GOM = __webpack_require__(0);
 const GIM = __webpack_require__(1);
 const GOB = __webpack_require__(2);
 
-const { getSpritePosition } = __webpack_require__(7);
+// const { getSpritePosition } = require('lib/sprite');
+const { getSpritePosition } = __webpack_require__(32);
 
 const SPRITE_DATA = __webpack_require__(23)
-const SPRITE = __webpack_require__(24);
+// const SPRITE = require('./image/water_tiles.png');
+const SPRITE = __webpack_require__(7);
 
 class Water extends GOB {
 	constructor (opts = {}) {
@@ -2523,8 +2230,8 @@ class Water extends GOB {
     }
 
     configureObject () {
-        this.width = 48;
-        this.height = 48;
+        this.width = 64;
+        this.height = 64;
         this.configured = true;
     }
 
@@ -2544,7 +2251,7 @@ class Water extends GOB {
 	draw () {
         if (!this.in_viewport || !this.configured || !this.sprite_index || !this.images.main) return;
 
-        const cell_size = 48;
+        const cell_size = 64;
 		this.context.save();
 			this.context.drawImage(
                 this.images.main,
@@ -2570,18 +2277,13 @@ module.exports = Water;
 /***/ (function(module, exports) {
 
 module.exports = {
-    width: 50,  // The width of a single cell
-    height: 50, // The height of a single cell
-    buffer: 1,  // The amount of whitespace around a cell
+    width: 64,  // The width of a single cell
+    height: 64, // The height of a single cell
+    buffer: 0,  // The amount of whitespace around a cell
 };
 
 /***/ }),
-/* 24 */
-/***/ (function(module, exports, __webpack_require__) {
-
-module.exports = __webpack_require__.p + "src/js/game/objects/terrain/water/image/water_tiles.png";
-
-/***/ }),
+/* 24 */,
 /* 25 */
 /***/ (function(module, exports, __webpack_require__) {
 
@@ -2664,7 +2366,7 @@ class Tree extends GOB {
         this.context.save();
 
 
-            this.context.globalAlpha = 0.6;
+            this.context.globalAlpha = 0.7;
             // this.context.drawImage(
             //     this.images.top,
             //     this.x - this.top_half_width - GOM.camera_offset.x - 2,
@@ -2677,8 +2379,8 @@ class Tree extends GOB {
                 0,
                 TREE_TOP_SPRITE_DATA.width - (TREE_TOP_SPRITE_DATA.buffer * 2),
                 TREE_TOP_SPRITE_DATA.height - (TREE_TOP_SPRITE_DATA.buffer * 2),
-                this.cornerPosition.x - 14,
-                this.cornerPosition.y - 35,
+                this.cornerPosition.x - 13, // (top frame width - trunk width) / 2
+                this.cornerPosition.y - 35, // magic
                 TREE_TOP_SPRITE_DATA.width,
                 TREE_TOP_SPRITE_DATA.height,
             );
@@ -2719,18 +2421,131 @@ module.exports = __webpack_require__.p + "src/js/game/objects/terrain/tree/image
 /* 30 */
 /***/ (function(module, exports, __webpack_require__) {
 
-module.exports = __webpack_require__.p + "src/js/game/objects/terrain/tree/image/tree_top_anim.png";
+module.exports = __webpack_require__.p + "src/js/game/objects/terrain/tree/image/new_tree_sprite.png";
 
 /***/ }),
 /* 31 */
 /***/ (function(module, exports) {
 
 module.exports = {
-    width: 48,
-    height: 53,
-    buffer: 1,
+    width: 46,
+    height: 49,
+    buffer: 0,
     frames: 8,
-    dealy: 200,
+    delay: 200,
+};
+
+/***/ }),
+/* 32 */
+/***/ (function(module, exports, __webpack_require__) {
+
+const sprite_mapping = __webpack_require__(33);
+
+function getSpritePosition (neighbors, openings) {
+    let x = null;
+    let y = 0;
+    switch (openings) {
+        case 0:
+            x = determineNoneSideImage(neighbors);
+            break;
+        case 1:
+            x = determineOneSideImage(neighbors);
+            break;
+        case 2:
+            x = determineTwoSideImage(neighbors);
+            break;
+        case 3:
+            x = determineThreeSideImage(neighbors);
+            break;
+        case 4:
+            x = determineFourSideImage(neighbors);
+            break;
+    }
+    return { x, y };
+}
+
+function determineNoneSideImage () {
+    // clip the none side sprite
+    return sprite_mapping.none.f;
+}
+
+function determineOneSideImage (neighbors) {
+    // one side doesnt give a shit about diagonals
+    const { north, south, east, west } = neighbors;
+    const map = sprite_mapping.one;
+    if (north) return map.n;
+    if (south) return map.s;
+    if (east) return map.e;
+    if (west) return map.w;
+}
+
+function determineTwoSideImage (neighbors) {
+    // two sided cares about the diagonal between two adjacent openings
+    const { north, south, east, west } = neighbors;
+    const map = sprite_mapping.two;
+    if (north && south) return map.v; // clip vertical tube
+    if (east && west) return map.h; // clip horizontal tube
+
+    if (north && east) return map.ne;
+    if (north && west) return map.nw;
+    if (south && east) return map.se;
+    if (south && west) return map.sw;
+}
+
+function determineThreeSideImage (neighbors) {
+    // two sided cares about the diagonal between two adjacent openings
+    const { north, south, east, west } = neighbors;
+    const map = sprite_mapping.three;
+
+    // Faces north
+    if (west && north && east) return map.n;
+    // Faces east
+    if (north && east && south) return map.e;
+    // Faces south
+    if (west && south && east) return map.s;
+    // Faces west
+    if (north && west && south) return map.w;
+}
+
+function determineFourSideImage (neighbors) {
+    return sprite_mapping.four.f;
+}
+
+module.exports = {
+    getSpritePosition,
+};
+
+/***/ }),
+/* 33 */
+/***/ (function(module, exports) {
+
+module.exports = {
+    one: {
+       e: 0,
+       s: 1,
+       n: 2,
+       w: 0,
+    },
+    two: {
+        v: 3,
+        h: 0,
+        ne: 2,
+        se: 1,
+        sw: 1,
+        nw: 2,
+    },
+    three: {
+        n: 2,
+        s: 1,
+        e: 3,
+        w: 3
+    },
+    four: {
+        f: 3,
+    },
+    none: {
+        f: 0,
+    }
 };
 
 /***/ })

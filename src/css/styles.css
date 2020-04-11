@@ -76,7 +76,8 @@ canvas {
 #back_canvas {
 	z-index: 1;
 	/* background-color: rgba(70,70,70,1); */
-	background-color: rgb(118, 182, 118);
+	/* background-color: rgb(118, 182, 118); */
+	background-color: rgb(122, 170, 34);
 }
 
 

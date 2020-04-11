@@ -29,7 +29,8 @@ const WORLD_MAP_LEGEND = {
 
 class World {
     constructor (world_map) {
-        this.cell_size = 48;
+        // this.cell_size = 48;
+        this.cell_size = 64;
         this.half_cell_size = this.cell_size / 2;
 
         GOM.world_size = {
@@ -57,6 +58,7 @@ class World {
             row.forEach((tile, x) => {
                 const type = WORLD_MAP_LEGEND[tile];
                 const objectParams = {
+                    world_cell_size: this.cell_size,
                     spawn: {
                         x: (x * this.cell_size) + this.half_cell_size,
                         y: (y * this.cell_size) + this.half_cell_size,

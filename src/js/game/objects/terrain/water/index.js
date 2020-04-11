@@ -2,10 +2,12 @@ const GOM = require('core/game-object-manager');
 const GIM = require('core/game-input-manager');
 const GOB = require('core/game-object-base');
 
-const { getSpritePosition } = require('lib/sprite');
+// const { getSpritePosition } = require('lib/sprite');
+const { getSpritePosition } = require('lib/simple_sprite');
 
 const SPRITE_DATA = require('./image/info')
-const SPRITE = require('./image/water_tiles.png');
+// const SPRITE = require('./image/water_tiles.png');
+const SPRITE = require('./image/new_water_sprite.png');
 
 class Water extends GOB {
 	constructor (opts = {}) {
@@ -29,8 +31,8 @@ class Water extends GOB {
     }
 
     configureObject () {
-        this.width = 48;
-        this.height = 48;
+        this.width = 64;
+        this.height = 64;
         this.configured = true;
     }
 
@@ -50,7 +52,7 @@ class Water extends GOB {
 	draw () {
         if (!this.in_viewport || !this.configured || !this.sprite_index || !this.images.main) return;
 
-        const cell_size = 48;
+        const cell_size = 64;
 		this.context.save();
 			this.context.drawImage(
                 this.images.main,

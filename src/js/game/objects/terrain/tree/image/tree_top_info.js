@@ -1,7 +1,7 @@
 module.exports = {
-    width: 48,
-    height: 53,
-    buffer: 1,
+    width: 46,
+    height: 49,
+    buffer: 0,
     frames: 8,
-    dealy: 200,
+    delay: 200,
 };
